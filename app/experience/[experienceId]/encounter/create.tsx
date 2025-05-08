@@ -48,7 +48,7 @@ export default function CreateEncounterScreen() {
                             value={name}
                             onChangeText={setName}
                             placeholder="Enter encounter name"
-                            placeholderTextColor="rgba(0,0,0,0.5)"
+                        // placeholderTextColor="rgba(0,0,0,0.5)"
                         />
                     </View>
 
@@ -59,7 +59,7 @@ export default function CreateEncounterScreen() {
                             value={summary}
                             onChangeText={setSummary}
                             placeholder="What happens in this encounter?"
-                            placeholderTextColor="rgba(0,0,0,0.5)"
+                            // placeholderTextColor="rgba(0,0,0,0.5)"
                             multiline
                             numberOfLines={3}
                         />
@@ -72,7 +72,7 @@ export default function CreateEncounterScreen() {
                             value={objective}
                             onChangeText={setObjective}
                             placeholder="What should the player achieve?"
-                            placeholderTextColor="rgba(0,0,0,0.5)"
+                            // placeholderTextColor="rgba(0,0,0,0.5)"
                             multiline
                             numberOfLines={3}
                         />

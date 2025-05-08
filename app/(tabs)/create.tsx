@@ -59,7 +59,7 @@ export default function CreateExperienceScreen() {
                             value={title}
                             onChangeText={setTitle}
                             placeholder="Enter experience name"
-                            placeholderTextColor="rgba(0,0,0,0.5)"
+                        // placeholderTextColor="rgba(0,0,0,0.5)"
                         />
                     </View>
 
@@ -70,7 +70,7 @@ export default function CreateExperienceScreen() {
                             value={shortDescription}
                             onChangeText={setShortDescription}
                             placeholder="Enter a one-line description"
-                            placeholderTextColor="rgba(0,0,0,0.5)"
+                        // placeholderTextColor="rgba(0,0,0,0.5)"
                         />
                     </View>
 
@@ -81,7 +81,7 @@ export default function CreateExperienceScreen() {
                             value={longDescription}
                             onChangeText={setLongDescription}
                             placeholder="Enter a detailed description"
-                            placeholderTextColor="rgba(0,0,0,0.5)"
+                            // placeholderTextColor="rgba(0,0,0,0.5)"
                             multiline
                             numberOfLines={4}
                         />
@@ -102,12 +102,12 @@ export default function CreateExperienceScreen() {
                                     <TextInput
                                         style={styles.cardTitle}
                                         placeholder="Character Name"
-                                        placeholderTextColor="rgba(0,0,0,0.5)"
+                                    // placeholderTextColor="rgba(0,0,0,0.5)"
                                     />
                                     <TextInput
                                         style={styles.cardDescription}
                                         placeholder="Brief description"
-                                        placeholderTextColor="rgba(0,0,0,0.5)"
+                                        // placeholderTextColor="rgba(0,0,0,0.5)"
                                         multiline
                                     />
                                 </ThemedView>
@@ -130,12 +130,12 @@ export default function CreateExperienceScreen() {
                                     <TextInput
                                         style={styles.cardTitle}
                                         placeholder="Encounter Name"
-                                        placeholderTextColor="rgba(0,0,0,0.5)"
+                                    // placeholderTextColor="rgba(0,0,0,0.5)"
                                     />
                                     <TextInput
                                         style={styles.cardDescription}
                                         placeholder="Brief summary"
-                                        placeholderTextColor="rgba(0,0,0,0.5)"
+                                        // placeholderTextColor="rgba(0,0,0,0.5)"
                                         multiline
                                     />
                                     <TouchableOpacity style={styles.locationButton}>
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.1)',
+        borderColor: 'rgba(192, 192, 192, 0.1)',
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
         padding: 16,
         marginRight: 16,
         borderRadius: 8,
-        backgroundColor: 'rgba(0,0,0,0.05)',
+        // backgroundColor: 'rgba(0,0,0,0.05)',
     },
     cardTitle: {
         fontSize: 16,

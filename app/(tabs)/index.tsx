@@ -1,75 +1,88 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
+import { ExperienceCard } from '@/components/ExperienceCard';
+import { HorizontalList } from '@/components/HorizontalList';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
+    <ScrollView style={styles.container}>
+      <ThemedView style={styles.header}>
+        <ThemedText type="title">Immersive Experiences</ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+      <View style={styles.section}>
+        <ThemedText type="subtitle">Featured Experiences</ThemedText>
+        <HorizontalList>
+          <ExperienceCard
+            title="Mystery at Moonlight Manor"
+            description="A thrilling murder mystery set in a historic mansion"
+            duration="2 hours"
+            distance="0.5 miles away"
+            status="Starting soon"
+          />
+          <ExperienceCard
+            title="Urban Adventure Quest"
+            description="Explore the city's hidden gems in this interactive treasure hunt"
+            duration="3 hours"
+            distance="1.2 miles away"
+            status="Looking for participants"
+          />
+        </HorizontalList>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="subtitle">Nearby Experiences</ThemedText>
+        <HorizontalList>
+          <ExperienceCard
+            title="Art Gallery Mystery"
+            description="Solve the case of the missing masterpiece"
+            duration="1.5 hours"
+            distance="0.3 miles away"
+            status="Ready to join"
+          />
+        </HorizontalList>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="subtitle">Starting Soon</ThemedText>
+        <HorizontalList>
+          <ExperienceCard
+            title="Ghost Tour"
+            description="Experience the paranormal history of downtown"
+            duration="2 hours"
+            distance="2.1 miles away"
+            status="Starts in 30min"
+          />
+        </HorizontalList>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="subtitle">Join Ongoing Experiences</ThemedText>
+        <HorizontalList>
+          <ExperienceCard
+            title="City-wide Scavenger Hunt"
+            description="Join teams competing in this exciting urban adventure"
+            duration="4 hours remaining"
+            distance="Various locations"
+            status="In progress - can join"
+          />
+        </HorizontalList>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  header: {
+    padding: 16,
+    paddingTop: 60,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  section: {
+    padding: 16,
+    gap: 12,
   },
 });

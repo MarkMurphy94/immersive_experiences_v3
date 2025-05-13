@@ -61,6 +61,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="line.3.horizontal" color={color} />,
         }}
       />
+      {/* <Tabs.Screen
+        name="login"
+        options={{
+          title: 'Login',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.circle" color={color} />,
+          href: null, // Hide this tab from the tab bar
+        }}
+      /> */}
     </Tabs>
   );
 }

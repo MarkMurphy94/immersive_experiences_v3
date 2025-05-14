@@ -1,8 +1,9 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import React, { useState } from 'react';
+import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 
@@ -12,11 +13,23 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const auth = FIREBASE_AUTH;
 
+    useEffect(() => {
+        const unsubscribe = getAuth().onAuthStateChanged((user) => {
+            if (user) {
+                router.replace('/(tabs)');  // Only redirect if user is authenticated
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
     const signIn = async () => {
         setLoading(true);
         try {
             const response = await signInWithEmailAndPassword(auth, email, password);
-            console.log(response);
+            const token = await response.user.getIdToken();
+            await AsyncStorage.setItem('@user_token', token);
+            // Also store the user ID for future reference
+            await AsyncStorage.setItem('@user_id', response.user.uid);
             router.replace('/(tabs)');
         } catch (error: any) {
             console.log(error);
@@ -30,7 +43,10 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             const response = await createUserWithEmailAndPassword(auth, email, password);
-            console.log(response);
+            const token = await response.user.getIdToken();
+            await AsyncStorage.setItem('@user_token', token);
+            // Also store the user ID for future reference
+            await AsyncStorage.setItem('@user_id', response.user.uid);
             Alert.alert('Success', 'Account created successfully!');
             router.replace('/(tabs)');
         } catch (error: any) {

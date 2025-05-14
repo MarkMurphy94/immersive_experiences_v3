@@ -5,6 +5,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 export default function HomeScreen() {
+
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.header}>

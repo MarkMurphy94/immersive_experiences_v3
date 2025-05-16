@@ -1,3 +1,5 @@
+import { CharacterModal } from '@/components/CharacterModal';
+import { EncounterModal } from '@/components/EncounterModal';
 import { HorizontalList } from '@/components/HorizontalList';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -17,12 +19,20 @@ type Character = {
     description: string;
 };
 
+// TODO: scrollable modal or popup for encounter creation + character creation
+// TODO: Add/save/create button on modal saves encounter/character to lists on experience creation screen
+// TODO: Add location picker for encounters
+// TODO: Add character picker for encounters
+// TODO: characters/encounters in lists should be editable
+
 export default function CreateExperienceScreen() {
     const [title, setTitle] = useState('');
     const [shortDescription, setShortDescription] = useState('');
     const [longDescription, setLongDescription] = useState('');
     const [encounters, setEncounters] = useState<Encounter[]>([]);
     const [characters, setCharacters] = useState<Character[]>([]);
+    const [showCharacterModal, setShowCharacterModal] = useState(false);
+    const [showEncounterModal, setShowEncounterModal] = useState(false);
 
     const addEncounter = () => {
         const newEncounter: Encounter = {
@@ -91,7 +101,10 @@ export default function CreateExperienceScreen() {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <ThemedText type="subtitle">Characters</ThemedText>
-                        <TouchableOpacity onPress={addCharacter} style={styles.addButton}>
+                        <TouchableOpacity
+                            onPress={() => setShowCharacterModal(true)}
+                            style={styles.addButton}
+                        >
                             <ThemedText style={styles.addButtonText}>+ Add Character</ThemedText>
                         </TouchableOpacity>
                     </View>
@@ -99,17 +112,10 @@ export default function CreateExperienceScreen() {
                         <HorizontalList>
                             {characters.map((character) => (
                                 <ThemedView key={character.id} style={styles.card}>
-                                    <TextInput
-                                        style={styles.cardTitle}
-                                        placeholder="Character Name"
-                                    // placeholderTextColor="rgba(0,0,0,0.5)"
-                                    />
-                                    <TextInput
-                                        style={styles.cardDescription}
-                                        placeholder="Brief description"
-                                        // placeholderTextColor="rgba(0,0,0,0.5)"
-                                        multiline
-                                    />
+                                    <ThemedText style={styles.cardTitle}>{character.name}</ThemedText>
+                                    <ThemedText style={styles.cardDescription}>
+                                        {character.description}
+                                    </ThemedText>
                                 </ThemedView>
                             ))}
                         </HorizontalList>
@@ -119,7 +125,10 @@ export default function CreateExperienceScreen() {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <ThemedText type="subtitle">Encounters</ThemedText>
-                        <TouchableOpacity onPress={addEncounter} style={styles.addButton}>
+                        <TouchableOpacity
+                            onPress={() => setShowEncounterModal(true)}
+                            style={styles.addButton}
+                        >
                             <ThemedText style={styles.addButtonText}>+ Add Encounter</ThemedText>
                         </TouchableOpacity>
                     </View>
@@ -127,20 +136,15 @@ export default function CreateExperienceScreen() {
                         <HorizontalList>
                             {encounters.map((encounter) => (
                                 <ThemedView key={encounter.id} style={styles.card}>
-                                    <TextInput
-                                        style={styles.cardTitle}
-                                        placeholder="Encounter Name"
-                                    // placeholderTextColor="rgba(0,0,0,0.5)"
-                                    />
-                                    <TextInput
-                                        style={styles.cardDescription}
-                                        placeholder="Brief summary"
-                                        // placeholderTextColor="rgba(0,0,0,0.5)"
-                                        multiline
-                                    />
-                                    <TouchableOpacity style={styles.locationButton}>
-                                        <ThemedText>Set Location</ThemedText>
-                                    </TouchableOpacity>
+                                    <ThemedText style={styles.cardTitle}>{encounter.name}</ThemedText>
+                                    <ThemedText style={styles.cardDescription}>
+                                        {encounter.summary}
+                                    </ThemedText>
+                                    {encounter.location && (
+                                        <ThemedText style={styles.cardLocation}>
+                                            📍 {encounter.location}
+                                        </ThemedText>
+                                    )}
                                 </ThemedView>
                             ))}
                         </HorizontalList>
@@ -153,6 +157,30 @@ export default function CreateExperienceScreen() {
                     </ThemedView>
                 </View>
             </ThemedView>
+
+            <CharacterModal
+                visible={showCharacterModal}
+                onClose={() => setShowCharacterModal(false)}
+                onSave={(character) => {
+                    setCharacters([...characters, character]);
+                }}
+            />
+
+            <EncounterModal
+                visible={showEncounterModal}
+                onClose={() => setShowEncounterModal(false)}
+                onSave={(encounter) => {
+                    setEncounters([
+                        ...encounters,
+                        {
+                            ...encounter,
+                            location: typeof encounter.location === 'string' || encounter.location === null
+                                ? encounter.location
+                                : (encounter.location?.name ?? ''),
+                        },
+                    ]);
+                }}
+            />
         </ScrollView>
     );
 }
@@ -228,5 +256,10 @@ const styles = StyleSheet.create({
     },
     submitButtonText: {
         color: '#fff',
-    }
+    },
+    cardLocation: {
+        fontSize: 14,
+        marginTop: 8,
+        color: '#0a7ea4',
+    },
 });

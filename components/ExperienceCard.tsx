@@ -6,12 +6,12 @@ import { ThemedView } from './ThemedView';
 type ExperienceCardProps = {
     title: string;
     description: string;
-    duration: string;
+    estimatedDuration: string;
     distance: string;
     status: string;
 };
 
-export function ExperienceCard({ title, description, duration, distance, status }: ExperienceCardProps) {
+export function ExperienceCard({ title, description, estimatedDuration, distance, status }: ExperienceCardProps) {
     return (
         <Pressable
             style={styles.container}
@@ -22,8 +22,8 @@ export function ExperienceCard({ title, description, duration, distance, status 
                     <ThemedText type="defaultSemiBold" style={styles.title}>{title}</ThemedText>
                     <ThemedText style={styles.description}>{description}</ThemedText>
                     <View style={styles.details}>
-                        <ThemedText style={styles.info}>⏱ {duration}</ThemedText>
-                        <ThemedText style={styles.info}>📍 {distance}</ThemedText>
+                        <ThemedText style={styles.info}>⏱ {estimatedDuration ? estimatedDuration : ""}</ThemedText>
+                        <ThemedText style={styles.info}>📍 {distance ? distance : ""}</ThemedText>
                     </View>
                     <ThemedText style={[styles.status, styles.statusText]}>{status}</ThemedText>
                 </View>

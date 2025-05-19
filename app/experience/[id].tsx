@@ -19,7 +19,7 @@ export default function ExperienceDetailsScreen() {
             radius: 0.5,
             unit: "miles"
         },
-        duration: "2 hours",
+        estimatedDuration: "2 hours",
         characters: [
             {
                 id: "1",
@@ -57,9 +57,9 @@ export default function ExperienceDetailsScreen() {
                 </View>
 
                 <View style={styles.section}>
-                    <ThemedText type="subtitle">Location & Duration</ThemedText>
+                    <ThemedText type="subtitle">Location & estimatedDuration</ThemedText>
                     <ThemedText>Range: {experience.area.radius} {experience.area.unit}</ThemedText>
-                    <ThemedText>Duration: {experience.duration}</ThemedText>
+                    <ThemedText>estimatedDuration: {experience.estimatedDuration}</ThemedText>
                 </View>
 
                 <View style={styles.section}>

@@ -3,8 +3,11 @@ import { EncounterModal } from '@/components/EncounterModal';
 import { HorizontalList } from '@/components/HorizontalList';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { FIREBASE_AUTH, FIRESTORE } from '@/FirebaseConfig';
+import { router } from 'expo-router';
+import { collection, doc, setDoc } from "firebase/firestore";
 import { useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Encounter = {
     id: string;
@@ -19,9 +22,18 @@ type Character = {
     description: string;
 };
 
-// TODO: scrollable modal or popup for encounter creation + character creation
-// TODO: Add/save/create button on modal saves encounter/character to lists on experience creation screen
-// TODO: Add location picker for encounters
+type Experience = {
+    id: string;
+    title: string;
+    shortDescription: string;
+    longDescription: string;
+    createdBy: string;
+    createdAt: Date;
+    characters: Character[];
+    encounters: Encounter[];
+};
+
+// TODO: Add location picker for encounters - BLOCKED
 // TODO: Add character picker for encounters
 // TODO: characters/encounters in lists should be editable
 
@@ -34,24 +46,57 @@ export default function CreateExperienceScreen() {
     const [showCharacterModal, setShowCharacterModal] = useState(false);
     const [showEncounterModal, setShowEncounterModal] = useState(false);
 
-    const addEncounter = () => {
-        const newEncounter: Encounter = {
-            id: Date.now().toString(),
-            name: '',
-            summary: '',
-            location: null,
-        };
-        setEncounters([...encounters, newEncounter]);
-    };
+    const saveExperienceToFirebase = async () => {
+        try {
+            // Validate required fields
+            if (!title.trim()) {
+                Alert.alert('Error', 'Please enter an experience name');
+                return;
+            }
 
-    const addCharacter = () => {
-        const newCharacter: Character = {
-            id: Date.now().toString(),
-            name: '',
-            description: '',
-        };
-        setCharacters([...characters, newCharacter]);
-    };
+            if (!shortDescription.trim()) {
+                Alert.alert('Error', 'Please enter a short description');
+                return;
+            }
+
+            const currentUser = FIREBASE_AUTH.currentUser;
+            if (!currentUser) {
+                Alert.alert('Error', 'You must be logged in to create an experience');
+                return;
+            }
+
+            // Create experience object
+            const today = new Date(Date.now());
+            const experience: Experience = {
+                id: `exp_${today}`,
+                title: title.trim(),
+                shortDescription: shortDescription.trim(),
+                longDescription: longDescription.trim(),
+                createdBy: currentUser.uid,
+                createdAt: today,
+                characters,
+                encounters,
+            };
+
+            // Save to Firestore
+            const experienceRef = doc(collection(FIRESTORE, 'ImmersiveExperiences'), experience.id);
+            await setDoc(experienceRef, experience);
+
+            // Show success message
+            Alert.alert(
+                'Success',
+                'Experience created successfully!',
+                [{ text: 'OK', onPress: () => router.back() }]
+            );
+
+        } catch (error) {
+            console.error('Error saving experience:', error);
+            Alert.alert(
+                'Error',
+                'Failed to save experience. Please try again.'
+            );
+        }
+    }
 
     return (
         <ScrollView style={styles.container}>
@@ -152,8 +197,8 @@ export default function CreateExperienceScreen() {
                 </View>
 
                 <View style={styles.section}>
-                    <ThemedView style={styles.submitButton}>
-                        <ThemedText type="defaultSemiBold" style={styles.submitButtonText}>Create Experience</ThemedText>
+                    <ThemedView style={styles.submitButton} >
+                        <ThemedText type="defaultSemiBold" style={styles.submitButtonText} onPress={saveExperienceToFirebase}>Create Experience</ThemedText>
                     </ThemedView>
                 </View>
             </ThemedView>

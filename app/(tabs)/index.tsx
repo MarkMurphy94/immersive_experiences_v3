@@ -18,14 +18,14 @@ export default function HomeScreen() {
           <ExperienceCard
             title="Mystery at Moonlight Manor"
             description="A thrilling murder mystery set in a historic mansion"
-            duration="2 hours"
-            distance="0.5 miles away"
-            status="Starting soon"
+            estimatedDuration="2 hours"
+            distance=""
+            status="Run this Experience!"
           />
           <ExperienceCard
             title="Urban Adventure Quest"
             description="Explore the city's hidden gems in this interactive treasure hunt"
-            duration="3 hours"
+            estimatedDuration="3 hours"
             distance="1.2 miles away"
             status="Looking for participants"
           />
@@ -38,7 +38,7 @@ export default function HomeScreen() {
           <ExperienceCard
             title="Art Gallery Mystery"
             description="Solve the case of the missing masterpiece"
-            duration="1.5 hours"
+            estimatedDuration="1.5 hours"
             distance="0.3 miles away"
             status="Ready to join"
           />
@@ -51,7 +51,7 @@ export default function HomeScreen() {
           <ExperienceCard
             title="Ghost Tour"
             description="Experience the paranormal history of downtown"
-            duration="2 hours"
+            estimatedDuration="2 hours"
             distance="2.1 miles away"
             status="Starts in 30min"
           />
@@ -64,7 +64,7 @@ export default function HomeScreen() {
           <ExperienceCard
             title="City-wide Scavenger Hunt"
             description="Join teams competing in this exciting urban adventure"
-            duration="4 hours remaining"
+            estimatedDuration="4 hours remaining"
             distance="Various locations"
             status="In progress - can join"
           />

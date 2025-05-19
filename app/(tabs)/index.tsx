@@ -2,9 +2,53 @@ import { ExperienceCard } from '@/components/ExperienceCard';
 import { HorizontalList } from '@/components/HorizontalList';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { FIRESTORE } from '@/FirebaseConfig';
+import { collection, getDocs, limit, query } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+
+type Experience = {
+  id: string;
+  title: string;
+  shortDescription: string;
+  estimatedDuration?: string;
+  status?: string;
+  distance?: string;
+};
 
 export default function HomeScreen() {
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchExperiencesFromFirebase = async () => {
+    try {
+      const experiencesRef = collection(FIRESTORE, 'ImmersiveExperiences');
+      const q = query(experiencesRef, limit(5)); // Limit to 5 featured experiences
+      const querySnapshot = await getDocs(q);
+      const fetchedExperiences: Experience[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        fetchedExperiences.push({
+          id: doc.id,
+          title: data.title,
+          shortDescription: data.shortDescription,
+          estimatedDuration: '2 hours', // You might want to add this to your experience data
+          status: 'Ready to Play!', // You might want to add this to your experience data
+          distance: '', // You might want to calculate this based on user location
+        });
+      });
+
+      setExperiences(fetchedExperiences);
+    } catch (error) {
+      console.error('Error fetching experiences:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExperiencesFromFirebase();
+  }, []);
 
   return (
     <ScrollView style={styles.container}>
@@ -15,20 +59,20 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <ThemedText type="subtitle">Featured Experiences</ThemedText>
         <HorizontalList>
-          <ExperienceCard
-            title="Mystery at Moonlight Manor"
-            description="A thrilling murder mystery set in a historic mansion"
-            estimatedDuration="2 hours"
-            distance=""
-            status="Run this Experience!"
-          />
-          <ExperienceCard
-            title="Urban Adventure Quest"
-            description="Explore the city's hidden gems in this interactive treasure hunt"
-            estimatedDuration="3 hours"
-            distance="1.2 miles away"
-            status="Looking for participants"
-          />
+          {loading ? (
+            <ActivityIndicator size="large" color="#0a7ea4" />
+          ) : (
+            experiences.map((experience) => (
+              <ExperienceCard
+                key={experience.id}
+                title={experience.title}
+                description={experience.shortDescription}
+                estimatedDuration={experience.estimatedDuration}
+                distance={experience.distance}
+                status={experience.status}
+              />
+            ))
+          )}
         </HorizontalList>
       </View>
 
@@ -67,6 +111,13 @@ export default function HomeScreen() {
             estimatedDuration="4 hours remaining"
             distance="Various locations"
             status="In progress - can join"
+          />
+          <ExperienceCard
+            title="Cops 'n Robbers"
+            description="Be a cop or be a robber"
+            estimatedDuration="4 hours remaining"
+            distance="Various locations"
+            status="No Characters Available"
           />
         </HorizontalList>
       </View>

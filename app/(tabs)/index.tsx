@@ -65,6 +65,7 @@ export default function HomeScreen() {
             experiences.map((experience) => (
               <ExperienceCard
                 key={experience.id}
+                id={experience.id}
                 title={experience.title}
                 description={experience.shortDescription}
                 estimatedDuration={experience.estimatedDuration}

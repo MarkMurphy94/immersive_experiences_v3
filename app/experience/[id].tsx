@@ -1,82 +1,105 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { FIRESTORE } from '@/FirebaseConfig';
 import { useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { doc, getDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+
+type Experience = {
+    id: string;
+    title: string;
+    shortDescription: string;
+    longDescription: string;
+    createdBy: string;
+    createdAt: number;
+    characters: {
+        id: string;
+        name: string;
+        description: string;
+    }[];
+    encounters: {
+        id: string;
+        name: string;
+        summary: string;
+        location: string | null;
+    }[];
+};
 
 export default function ExperienceDetailsScreen() {
     const { id } = useLocalSearchParams();
+    const [experience, setExperience] = useState<Experience | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // This would be replaced with actual data from your backend
-    const experience = {
-        id,
-        name: "Mystery at Moonlight Manor",
-        shortDescription: "A thrilling murder mystery set in a historic mansion",
-        genre: "Mystery",
-        createdBy: "Jane Doe",
-        createdDate: "2025-05-01",
-        longDescription: "Step into the shoes of a detective in this immersive murder mystery experience. Set in a beautifully preserved Victorian mansion, participants will need to gather clues, interview suspects, and solve puzzles to uncover the truth behind a mysterious death.",
-        area: {
-            radius: 0.5,
-            unit: "miles"
-        },
-        estimatedDuration: "2 hours",
-        characters: [
-            {
-                id: "1",
-                name: "Detective Inspector",
-                shortDescription: "Lead investigator on the case",
-            },
-            {
-                id: "2",
-                name: "The Butler",
-                shortDescription: "Long-time servant of the mansion",
-            },
-            {
-                id: "3",
-                name: "The Heiress",
-                shortDescription: "Daughter of the deceased",
+    useEffect(() => {
+        async function fetchExperience() {
+            try {
+                const experienceRef = doc(FIRESTORE, 'ImmersiveExperiences', id as string);
+                const experienceSnap = await getDoc(experienceRef);
+
+                if (experienceSnap.exists()) {
+                    setExperience({ id: experienceSnap.id, ...experienceSnap.data() } as Experience);
+                }
+            } catch (error) {
+                console.error('Error fetching experience:', error);
+            } finally {
+                setLoading(false);
             }
-        ]
-    };
+        }
+
+        fetchExperience();
+    }, [id]);
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0a7ea4" />
+            </View>
+        );
+    }
+
+    if (!experience) {
+        return (
+            <ThemedView style={styles.container}>
+                <ThemedText>Experience not found</ThemedText>
+            </ThemedView>
+        );
+    }
 
     return (
         <ScrollView style={styles.container}>
             <ThemedView style={styles.header}>
-                <ThemedText type="title">{experience.name}</ThemedText>
-                <ThemedText style={styles.genre}>{experience.genre}</ThemedText>
+                <ThemedText type="title">{experience.title}</ThemedText>
+                <ThemedText style={styles.description}>{experience.shortDescription}</ThemedText>
             </ThemedView>
 
             <ThemedView style={styles.content}>
-                <View style={styles.metaInfo}>
-                    <ThemedText type="defaultSemiBold">Created by {experience.createdBy}</ThemedText>
-                    <ThemedText style={styles.date}>{experience.createdDate}</ThemedText>
-                </View>
-
                 <View style={styles.section}>
                     <ThemedText>{experience.longDescription}</ThemedText>
                 </View>
 
                 <View style={styles.section}>
-                    <ThemedText type="subtitle">Location & estimatedDuration</ThemedText>
-                    <ThemedText>Range: {experience.area.radius} {experience.area.unit}</ThemedText>
-                    <ThemedText>estimatedDuration: {experience.estimatedDuration}</ThemedText>
-                </View>
-
-                <View style={styles.section}>
-                    <ThemedText type="subtitle">Available Characters</ThemedText>
+                    <ThemedText type="subtitle">Characters</ThemedText>
                     {experience.characters.map((character) => (
                         <View key={character.id} style={styles.characterCard}>
                             <ThemedText type="defaultSemiBold">{character.name}</ThemedText>
-                            <ThemedText>{character.shortDescription}</ThemedText>
+                            <ThemedText>{character.description}</ThemedText>
                         </View>
                     ))}
                 </View>
 
-                <View style={styles.section}>
-                    <ThemedView style={styles.joinButton}>
-                        <ThemedText type="defaultSemiBold" style={styles.joinButtonText}>Join Experience</ThemedText>
-                    </ThemedView>
-                </View>
+                {/* <View style={styles.section}>
+                    <ThemedText type="subtitle">Encounters</ThemedText>
+                    {experience.encounters.map((encounter) => (
+                        <View key={encounter.id} style={styles.encounterCard}>
+                            <ThemedText type="defaultSemiBold">{encounter.name}</ThemedText>
+                            <ThemedText>{encounter.summary}</ThemedText>
+                            {encounter.location && (
+                                <ThemedText style={styles.location}>📍 {encounter.location}</ThemedText>
+                            )}
+                        </View>
+                    ))}
+                </View> */}
             </ThemedView>
         </ScrollView>
     );
@@ -93,7 +116,7 @@ const styles = StyleSheet.create({
     content: {
         padding: 16,
     },
-    genre: {
+    description: {
         marginTop: 8,
         opacity: 0.7,
     },
@@ -115,6 +138,23 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: 'rgba(0, 0, 0, 0.05)',
         marginTop: 8,
+    },
+    encounterCard: {
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        marginTop: 8,
+        gap: 4,
+    },
+    location: {
+        fontSize: 14,
+        opacity: 0.7,
+        marginTop: 4,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     joinButton: {
         backgroundColor: '#0a7ea4',

@@ -16,6 +16,7 @@ type Experience = {
   distance?: string;
 };
 
+
 export default function HomeScreen() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,10 @@ export default function HomeScreen() {
       setLoading(false);
     }
   };
+
+  const checkUpcomingExperiencesForUser = async () => {
+    // TODO: if user is part of any upcoming experiences, add "Your Upcoming Experiences" section
+  }
 
   useEffect(() => {
     fetchExperiencesFromFirebase();

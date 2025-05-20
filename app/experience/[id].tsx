@@ -1,10 +1,11 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { FIRESTORE } from '@/FirebaseConfig';
+import { FIREBASE_AUTH, FIRESTORE } from '@/FirebaseConfig';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type Experience = {
     id: string;
@@ -30,6 +31,10 @@ export default function ExperienceDetailsScreen() {
     const { id } = useLocalSearchParams();
     const [experience, setExperience] = useState<Experience | null>(null);
     const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
 
     useEffect(() => {
         async function fetchExperience() {
@@ -50,6 +55,53 @@ export default function ExperienceDetailsScreen() {
         fetchExperience();
     }, [id]);
 
+    const scheduleExperience = () => {
+        setShowModal(true);
+    };
+
+    const handleSchedule = async () => {
+        try {
+            const currentUser = FIREBASE_AUTH.currentUser;
+            if (!currentUser || !experience) {
+                return;
+            }
+
+            const scheduleData = {
+                id: experience.id,
+                experienceTitle: experience.title,
+                userId: currentUser.uid,
+                scheduledFor: selectedDate.getTime(),
+                createdAt: Date.now(),
+                status: 'scheduled'
+            };
+
+            await addDoc(collection(FIRESTORE, 'ExperienceCalendar'), scheduleData);
+            setShowModal(false);
+
+            Alert.alert('Success', 'Experience scheduled successfully!');
+        } catch (error) {
+            console.error('Error scheduling experience:', error);
+            Alert.alert('Error', 'Failed to schedule experience. Please try again.');
+        }
+    };
+
+    const onDateChange = (event: any, selectedDate?: Date) => {
+        setShowDatePicker(false);
+        if (selectedDate) {
+            setSelectedDate(selectedDate);
+        }
+    };
+
+    const onTimeChange = (event: any, selectedTime?: Date) => {
+        setShowTimePicker(false);
+        if (selectedTime) {
+            const newDate = new Date(selectedDate);
+            newDate.setHours(selectedTime.getHours());
+            newDate.setMinutes(selectedTime.getMinutes());
+            setSelectedDate(newDate);
+        }
+    };
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -67,28 +119,97 @@ export default function ExperienceDetailsScreen() {
     }
 
     return (
-        <ScrollView style={styles.container}>
-            <ThemedView style={styles.header}>
-                <ThemedText type="title">{experience.title}</ThemedText>
-                <ThemedText style={styles.description}>{experience.shortDescription}</ThemedText>
-            </ThemedView>
+        <>
+            <ScrollView style={styles.container}>
+                <ThemedView style={styles.header}>
+                    <ThemedText type="title">{experience.title}</ThemedText>
+                    <ThemedText style={styles.description}>{experience.shortDescription}</ThemedText>
+                </ThemedView>
 
-            <ThemedView style={styles.content}>
-                <View style={styles.section}>
-                    <ThemedText>{experience.longDescription}</ThemedText>
-                </View>
+                <ThemedView style={styles.content}>
+                    <View style={styles.section}>
+                        <ThemedText>{experience.longDescription}</ThemedText>
+                    </View>
 
-                <View style={styles.section}>
-                    <ThemedText type="subtitle">Characters</ThemedText>
-                    {experience.characters.map((character) => (
-                        <View key={character.id} style={styles.characterCard}>
-                            <ThemedText type="defaultSemiBold">{character.name}</ThemedText>
-                            <ThemedText>{character.description}</ThemedText>
+                    <View style={styles.section}>
+                        <ThemedText type="subtitle">Characters</ThemedText>
+                        {experience.characters.map((character) => (
+                            <View key={character.id} style={styles.characterCard}>
+                                <ThemedText type="defaultSemiBold">{character.name}</ThemedText>
+                                <ThemedText>{character.description}</ThemedText>
+                            </View>
+                        ))}
+                    </View>
+                    <TouchableOpacity style={styles.button} onPress={scheduleExperience}>
+                        <ThemedText style={styles.buttonText}>Schedule this Experience</ThemedText>
+                    </TouchableOpacity>
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={showModal}
+                        onRequestClose={() => setShowModal(false)}
+                    >
+                        <View style={styles.modalContainer}>
+                            <ThemedView style={styles.modalContent}>
+                                <ThemedText type="subtitle">Schedule Experience</ThemedText>
+
+                                <View style={styles.dateTimeContainer}>
+                                    <TouchableOpacity
+                                        style={styles.dateTimeButton}
+                                        onPress={() => setShowDatePicker(true)}
+                                    >
+                                        <ThemedText>
+                                            Date: {selectedDate.toLocaleDateString()}
+                                        </ThemedText>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={styles.dateTimeButton}
+                                        onPress={() => setShowTimePicker(true)}
+                                    >
+                                        <ThemedText>
+                                            Time: {selectedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {showDatePicker && (
+                                    <DateTimePicker
+                                        value={selectedDate}
+                                        mode="date"
+                                        onChange={onDateChange}
+                                        minimumDate={new Date()}
+                                    />
+                                )}
+
+                                {showTimePicker && (
+                                    <DateTimePicker
+                                        value={selectedDate}
+                                        mode="time"
+                                        onChange={onTimeChange}
+                                    />
+                                )}
+
+                                <View style={styles.modalButtons}>
+                                    <TouchableOpacity
+                                        style={[styles.button, styles.cancelButton]}
+                                        onPress={() => setShowModal(false)}
+                                    >
+                                        <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.button, styles.confirmButton]}
+                                        onPress={handleSchedule}
+                                    >
+                                        <ThemedText style={styles.buttonText}>Schedule</ThemedText>
+                                    </TouchableOpacity>
+                                </View>
+                            </ThemedView>
                         </View>
-                    ))}
-                </View>
+                    </Modal>
 
-                {/* <View style={styles.section}>
+                    {/* <View style={styles.section}>
                     <ThemedText type="subtitle">Encounters</ThemedText>
                     {experience.encounters.map((encounter) => (
                         <View key={encounter.id} style={styles.encounterCard}>
@@ -100,8 +221,9 @@ export default function ExperienceDetailsScreen() {
                         </View>
                     ))}
                 </View> */}
-            </ThemedView>
-        </ScrollView>
+                </ThemedView>
+            </ScrollView>
+        </>
     );
 }
 
@@ -115,6 +237,17 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: 16,
+    },
+    button: {
+        backgroundColor: '#0a7ea4',
+        padding: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
     },
     description: {
         marginTop: 8,
@@ -164,5 +297,36 @@ const styles = StyleSheet.create({
     },
     joinButtonText: {
         color: '#fff',
-    }
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        width: '90%',
+        padding: 20,
+        borderRadius: 12,
+        gap: 16,
+    },
+    dateTimeContainer: {
+        gap: 12,
+    },
+    dateTimeButton: {
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
+    cancelButton: {
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    },
+    confirmButton: {
+        backgroundColor: '#0a7ea4',
+    },
 });

@@ -14,6 +14,7 @@ type Encounter = {
     name: string;
     summary: string;
     location: string | null;
+    // TODO: encounter type
 };
 
 type Character = {

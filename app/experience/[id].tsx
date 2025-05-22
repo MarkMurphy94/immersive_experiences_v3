@@ -3,33 +3,52 @@ import { ThemedView } from '@/components/ThemedView';
 import { FIREBASE_AUTH, FIRESTORE } from '@/FirebaseConfig';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams } from 'expo-router';
-import { addDoc, collection, doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-type Experience = {
+
+// TODO: all types to common declaration
+type ScheduledExperience = {
+    id: string;
+    title: string;
+    startDateTime: Date;
+    playerUser: string;
+    status: string;
+    isActive: boolean;
+    // characters: {
+    //     id: string;
+    //     name: string;
+    //     description: string;
+    // }[];
+};
+
+type Encounter = {
+    id: string;
+    name: string;
+    summary: string;
+    location: string | null;
+};
+
+type Character = {
+    id: string;
+    name: string;
+    description: string;
+};
+
+type ExperienceData = {
     id: string;
     title: string;
     shortDescription: string;
     longDescription: string;
     createdBy: string;
-    createdAt: number;
-    characters: {
-        id: string;
-        name: string;
-        description: string;
-    }[];
-    encounters: {
-        id: string;
-        name: string;
-        summary: string;
-        location: string | null;
-    }[];
+    characters: Character[];
+    encounters: Encounter[];
 };
 
 export default function ExperienceDetailsScreen() {
     const { id } = useLocalSearchParams();
-    const [experience, setExperience] = useState<Experience | null>(null);
+    const [experience, setExperience] = useState<ScheduledExperience | null>(null);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -43,7 +62,7 @@ export default function ExperienceDetailsScreen() {
                 const experienceSnap = await getDoc(experienceRef);
 
                 if (experienceSnap.exists()) {
-                    setExperience({ id: experienceSnap.id, ...experienceSnap.data() } as Experience);
+                    setExperience({ id: experienceSnap.id, ...experienceSnap.data() } as ScheduledExperience);
                 }
             } catch (error) {
                 console.error('Error fetching experience:', error);
@@ -66,16 +85,17 @@ export default function ExperienceDetailsScreen() {
                 return;
             }
 
-            const scheduleData = {
+            const scheduleData: ScheduledExperience = {
                 id: experience.id,
-                experienceTitle: experience.title,
-                userId: currentUser.uid,
-                scheduledFor: selectedDate.getTime(),
-                createdAt: Date.now(),
-                status: 'scheduled'
+                title: experience.title,
+                playerUser: currentUser.uid,
+                startDateTime: selectedDate,
+                status: 'scheduled',
+                isActive: false
             };
 
-            await addDoc(collection(FIRESTORE, 'ExperienceCalendar'), scheduleData);
+            const scheduledExperienceRef = doc(collection(FIRESTORE, 'ExperienceCalendar'), scheduleData.startDateTime.toISOString());
+            await setDoc(scheduledExperienceRef, scheduleData);
             setShowModal(false);
 
             Alert.alert('Success', 'Experience scheduled successfully!');

@@ -8,19 +8,14 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 
-// TODO: all types to common declaration
+// TODO: all types to common declaration file
 type ScheduledExperience = {
-    id: string;
+    experienceId: string;
     title: string;
     startDateTime: Date;
     playerUser: string;
     status: string;
     isActive: boolean;
-    // characters: {
-    //     id: string;
-    //     name: string;
-    //     description: string;
-    // }[];
 };
 
 type Encounter = {
@@ -36,7 +31,7 @@ type Character = {
     description: string;
 };
 
-type ExperienceData = {
+type ExperienceDisplayData = {
     id: string;
     title: string;
     shortDescription: string;
@@ -48,7 +43,7 @@ type ExperienceData = {
 
 export default function ExperienceDetailsScreen() {
     const { id } = useLocalSearchParams();
-    const [experience, setExperience] = useState<ScheduledExperience | null>(null);
+    const [experience, setExperience] = useState<ExperienceDisplayData | null>(null);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -62,7 +57,7 @@ export default function ExperienceDetailsScreen() {
                 const experienceSnap = await getDoc(experienceRef);
 
                 if (experienceSnap.exists()) {
-                    setExperience({ id: experienceSnap.id, ...experienceSnap.data() } as ScheduledExperience);
+                    setExperience({ id: experienceSnap.id, ...experienceSnap.data() } as ExperienceDisplayData);
                 }
             } catch (error) {
                 console.error('Error fetching experience:', error);
@@ -85,8 +80,8 @@ export default function ExperienceDetailsScreen() {
                 return;
             }
 
-            const scheduleData: ScheduledExperience = {
-                id: experience.id,
+            const scheduledExperience: ScheduledExperience = {
+                experienceId: experience.id,
                 title: experience.title,
                 playerUser: currentUser.uid,
                 startDateTime: selectedDate,
@@ -94,8 +89,8 @@ export default function ExperienceDetailsScreen() {
                 isActive: false
             };
 
-            const scheduledExperienceRef = doc(collection(FIRESTORE, 'ExperienceCalendar'), scheduleData.startDateTime.toISOString());
-            await setDoc(scheduledExperienceRef, scheduleData);
+            const scheduledExperienceRef = doc(collection(FIRESTORE, 'ExperienceCalendar'), scheduledExperience.startDateTime.toISOString());
+            await setDoc(scheduledExperienceRef, scheduledExperience);
             setShowModal(false);
 
             Alert.alert('Success', 'Experience scheduled successfully!');

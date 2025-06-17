@@ -10,11 +10,25 @@ type Location = {
     address: string;
 };
 
+type EncounterTypeOption = {
+    id: string;
+    label: string;
+    value: string;
+};
+
+const encounterTypes: EncounterTypeOption[] = [
+    { id: '1', label: 'Message', value: 'message' },
+    { id: '2', label: 'Planned Encounter', value: 'planned_encounter' },
+    { id: '3', label: 'Surprise Encounter', value: 'surprise_encounter' },
+    { id: '4', label: 'Item Encounter', value: 'item_encounter' },
+];
+
 type Encounter = {
     id: string;
     name: string;
     summary: string;
     location: Location | null;
+    type: string;
 };
 
 type Props = {
@@ -28,6 +42,7 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
     const [summary, setSummary] = useState('');
     const [location, setLocation] = useState<Location | null>(null);
     const [showMap, setShowMap] = useState(false);
+    const [selectedType, setSelectedType] = useState<string>('message');
 
     const handleSave = () => {
         const encounter: Encounter = {
@@ -35,11 +50,13 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
             name,
             summary,
             location,
+            type: selectedType,
         };
         onSave(encounter);
         setName('');
         setSummary('');
         setLocation(null);
+        setSelectedType('message');
         onClose();
     };
 
@@ -62,6 +79,29 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
                             onChangeText={setName}
                             placeholder="Enter encounter name"
                         />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <ThemedText>Encounter Type</ThemedText>
+                        <View style={styles.typeContainer}>
+                            {encounterTypes.map((type) => (
+                                <TouchableOpacity
+                                    key={type.id}
+                                    style={[
+                                        styles.typeOption,
+                                        selectedType === type.value && styles.typeOptionSelected
+                                    ]}
+                                    onPress={() => setSelectedType(type.value)}
+                                >
+                                    <ThemedText style={[
+                                        styles.typeText,
+                                        selectedType === type.value && styles.typeTextSelected
+                                    ]}>
+                                        {type.label}
+                                    </ThemedText>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
 
                     <View style={styles.inputContainer}>
@@ -146,6 +186,28 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         gap: 8,
+    },
+    typeContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    typeOption: {
+        flex: 1,
+        minWidth: '45%',
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        alignItems: 'center',
+    },
+    typeOptionSelected: {
+        backgroundColor: '#0a7ea4',
+    },
+    typeText: {
+        fontSize: 14,
+    },
+    typeTextSelected: {
+        color: '#fff',
     },
     input: {
         borderWidth: 1,

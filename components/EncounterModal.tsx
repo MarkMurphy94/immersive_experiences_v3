@@ -27,6 +27,7 @@ type Encounter = {
     id: string;
     name: string;
     summary: string;
+    // messageToPlayer: string | null;
     location: Location | null;
     type: string;
 };

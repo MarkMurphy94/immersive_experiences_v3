@@ -1,3 +1,4 @@
+import ExperienceMapView from '@/components/ExperienceMapView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import React, { useState } from 'react';
@@ -42,8 +43,8 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
     const [name, setName] = useState('');
     const [summary, setSummary] = useState('');
     const [location, setLocation] = useState<Location | null>(null);
-    const [showMap, setShowMap] = useState(false);
     const [selectedType, setSelectedType] = useState<string>('message');
+    const [locationModalVisible, setLocationModalVisible] = useState(false);
 
     const handleSave = () => {
         const encounter: Encounter = {
@@ -59,6 +60,18 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
         setLocation(null);
         setSelectedType('message');
         onClose();
+    };
+
+    const handleLocationSelect = (selectedLocation: Location) => {
+        setLocation(selectedLocation);
+    };
+
+    const openLocationModal = () => {
+        setLocationModalVisible(true);
+    };
+
+    const closeLocationModal = () => {
+        setLocationModalVisible(false);
     };
 
     return (
@@ -117,37 +130,22 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
                         />
                     </View>
 
-                    {!showMap && (
+                    <View style={styles.inputContainer}>
+                        <ThemedText>Location</ThemedText>
                         <TouchableOpacity
                             style={styles.locationButton}
-                            onPress={() => setShowMap(true)}
+                            onPress={openLocationModal}
                         >
                             <ThemedText>
                                 {location ? 'Change Location' : 'Set Location'}
                             </ThemedText>
                         </TouchableOpacity>
-                    )}
-
-                    {showMap && (
-                        <View style={styles.mapContainer}>
-                            {/* <ExperienceMapView
-                                onLocationSelect={(loc) => {
-                                    setLocation(loc);
-                                    setShowMap(false);
-                                }}
-                            /> */}
-                            <TouchableOpacity
-                                style={styles.closeMapButton}
-                                onPress={() => setShowMap(false)}
-                            >
-                                <ThemedText>Close Map</ThemedText>
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                    </View>
 
                     {location && (
                         <View style={styles.selectedLocation}>
                             <ThemedText>Selected Location: {location.name}</ThemedText>
+                            <ThemedText style={styles.locationAddress}>{location.address}</ThemedText>
                         </View>
                     )}
 
@@ -161,10 +159,17 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
                         <TouchableOpacity
                             style={[styles.button, styles.saveButton]}
                             onPress={handleSave}
+                            disabled={!name.trim() || !summary.trim()}
                         >
                             <ThemedText style={styles.saveButtonText}>Save</ThemedText>
                         </TouchableOpacity>
                     </View>
+
+                    <ExperienceMapView
+                        visible={locationModalVisible}
+                        onClose={closeLocationModal}
+                        onLocationSelect={handleLocationSelect}
+                    />
                 </ThemedView>
             </View>
         </Modal>
@@ -245,6 +250,11 @@ const styles = StyleSheet.create({
         padding: 12,
         backgroundColor: 'rgba(0,0,0,0.05)',
         borderRadius: 8,
+    },
+    locationAddress: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 4,
     },
     buttonContainer: {
         flexDirection: 'row',

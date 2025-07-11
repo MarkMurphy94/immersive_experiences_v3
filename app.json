@@ -38,6 +38,13 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-maps",
+        {
+          "requestLocationPermission": true,
+          "locationPermission": "Allow Imers.io to use your location"
+        }
       ]
     ],
     "experiments": {

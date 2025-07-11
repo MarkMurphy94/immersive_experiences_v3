@@ -1,216 +1,319 @@
-// import React, { useRef, useState } from 'react';
-// import { Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-// import MapView, { Callout, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { ThemedText } from '@/components/ThemedText';
+import React, { useState } from 'react';
+import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
-// const { width, height } = Dimensions.get("window")
-// const ASPECT_RATIO = width / height
-// const LATITUDE_DELTA = 0.02
-// const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO
 
-// type Location = {
-//     latitude: number;
-//     longitude: number;
-//     name: string;
-//     address: string;
-// }
+type Location = {
+    latitude: number;
+    longitude: number;
+    name: string;
+    address: string;
+};
 
-// type Props = {
-//     onLocationSelect?: (location: Location) => void;
-// }
+type Props = {
+    visible: boolean;
+    onClose: () => void;
+    onLocationSelect?: (location: Location) => void;
+};
 
-// const ExperienceMapView = ({ onLocationSelect }: Props) => {
-//     const [marker, setMarker] = useState<Location[]>([]);
-//     const [searchQuery, setSearchQuery] = useState('');
-//     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-//     const map = useRef<MapView>(null);
-//     const [initialRegion, setInitialRegion] = useState({
-//         latitude: 37.78825,  // Default to San Francisco
-//         longitude: -122.4324,
-//         latitudeDelta: LATITUDE_DELTA,
-//         longitudeDelta: LONGITUDE_DELTA,
-//     });
+export default function ExperienceMapView({ visible, onClose, onLocationSelect }: Props) {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<Location[]>([]);
+    const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+    const [isSearching, setIsSearching] = useState(false);
 
-//     const handleMapPress = async (e: any) => {
-//         const coordinate = e.nativeEvent.coordinate;
-//         try {
-//             const response = await fetch(
-//                 `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coordinate.latitude},${coordinate.longitude}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}`
-//             );
-//             const data = await response.json();
+    // Handle location selection
+    const handleLocationSelect = (location: Location) => {
+        setSelectedLocation(location);
+        setSuggestions([]);
+        setSearchQuery(location.name);
+    };
 
-//             if (data.results && data.results.length > 0) {
-//                 const place = data.results[0];
-//                 const newLocation: Location = {
-//                     latitude: coordinate.latitude,
-//                     longitude: coordinate.longitude,
-//                     name: place.formatted_address,
-//                     address: place.formatted_address
-//                 };
-//                 setMarker([newLocation]);
-//                 setSelectedLocation(newLocation);
-//                 if (onLocationSelect) {
-//                     onLocationSelect(newLocation);
-//                 }
-//             }
-//         } catch (e) {
-//             console.log("Reverse geocoding error:", e);
-//         }
-//     };
+    // Handle confirmation and close modal
+    const handleConfirmLocation = () => {
+        if (selectedLocation && onLocationSelect) {
+            onLocationSelect(selectedLocation);
+        }
+        onClose();
+    };
 
-//     const handleSearch = async () => {
-//         try {
-//             const response = await fetch(
-//                 `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}`
-//             );
-//             const data = await response.json();
+    // Reset the component state when closing
+    const handleClose = () => {
+        setSearchQuery('');
+        setSuggestions([]);
+        setSelectedLocation(null);
+        onClose();
+    };
 
-//             if (data.results && data.results.length > 0) {
-//                 const place = data.results[0];
-//                 const newLocation: Location = {
-//                     latitude: place.geometry.location.lat,
-//                     longitude: place.geometry.location.lng,
-//                     name: place.formatted_address,
-//                     address: place.formatted_address
-//                 };
-//                 setMarker([newLocation]);
-//                 setSelectedLocation(newLocation);
-//                 if (onLocationSelect) {
-//                     onLocationSelect(newLocation);
-//                 }
+    // Search for locations based on query
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) return;
 
-//                 map.current?.animateToRegion({
-//                     latitude: newLocation.latitude,
-//                     longitude: newLocation.longitude,
-//                     latitudeDelta: LATITUDE_DELTA,
-//                     longitudeDelta: LONGITUDE_DELTA,
-//                 });
-//             }
-//         } catch (e) {
-//             console.log("Geocoding error:", e);
-//         }
-//     };
+        setIsSearching(true);
+        try {
+            const response = await fetch(
+                `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}`
+            );
+            const data = await response.json();
+            console.log("Geocode API response:", data);
 
-//     return (
-//         <View style={styles.container}>
-//             <View style={styles.searchContainer}>
-//                 <TextInput
-//                     style={styles.searchInput}
-//                     placeholder="Search for a location"
-//                     value={searchQuery}
-//                     onChangeText={setSearchQuery}
-//                     onSubmitEditing={handleSearch}
-//                 />
-//                 <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-//                     <Text>Search</Text>
-//                 </TouchableOpacity>
-//             </View>
+            if (data.results && data.results.length > 0) {
+                // Map API results to Location objects
+                const locationSuggestions = data.results.map((place: any) => ({
+                    latitude: place.geometry.location.lat,
+                    longitude: place.geometry.location.lng,
+                    name: place.formatted_address.split(',')[0],
+                    address: place.formatted_address
+                }));
 
-//             <MapView
-//                 ref={map}
-//                 style={styles.map}
-//                 provider={PROVIDER_GOOGLE}
-//                 initialRegion={initialRegion}
-//                 onPress={handleMapPress}
-//                 showsUserLocation={true}
-//             >
-//                 {marker.map((m, i) => (
-//                     <Marker
-//                         key={i}
-//                         coordinate={{
-//                             latitude: m.latitude,
-//                             longitude: m.longitude,
-//                         }}
-//                     >
-//                         <Callout>
-//                             <View style={styles.calloutContainer}>
-//                                 <Text style={styles.calloutTitle}>{m.name}</Text>
-//                                 <Text style={styles.calloutAddress}>{m.address}</Text>
-//                             </View>
-//                         </Callout>
-//                     </Marker>
-//                 ))}
-//             </MapView>
+                setSuggestions(locationSuggestions);
+            } else {
+                setSuggestions([]);
+            }
+        } catch (error) {
+            console.error("Error searching location:", error);
+            setSuggestions([]);
+        } finally {
+            setIsSearching(false);
+        }
+    };
 
-//             {selectedLocation && (
-//                 <View style={styles.selectedLocationContainer}>
-//                     <Text style={styles.selectedLocationText}>
-//                         Selected: {selectedLocation.name}
-//                     </Text>
-//                 </View>
-//             )}
-//         </View>
-//     );
-// };
+    // Render a suggestion item
+    const renderSuggestionItem = ({ item }: { item: Location }) => (
+        <TouchableOpacity
+            style={styles.suggestionItem}
+            onPress={() => handleLocationSelect(item)}
+        >
+            <ThemedText style={styles.suggestionName}>{item.name}</ThemedText>
+            <ThemedText style={styles.suggestionAddress}>{item.address}</ThemedText>
+        </TouchableOpacity>
+    );
 
-// const styles = StyleSheet.create({
-//     container: {
-//         flex: 1,
-//     },
-//     map: {
-//         width: '100%',
-//         height: '100%',
-//     },
-//     searchContainer: {
-//         position: 'absolute',
-//         top: 10,
-//         left: 10,
-//         right: 10,
-//         zIndex: 1,
-//         flexDirection: 'row',
-//         gap: 10,
-//     },
-//     searchInput: {
-//         flex: 1,
-//         height: 40,
-//         backgroundColor: 'white',
-//         borderRadius: 8,
-//         paddingHorizontal: 10,
-//         shadowColor: '#000',
-//         shadowOffset: { width: 0, height: 2 },
-//         shadowOpacity: 0.25,
-//         shadowRadius: 3.84,
-//         elevation: 5,
-//     },
-//     searchButton: {
-//         backgroundColor: 'white',
-//         padding: 10,
-//         borderRadius: 8,
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         shadowColor: '#000',
-//         shadowOffset: { width: 0, height: 2 },
-//         shadowOpacity: 0.25,
-//         shadowRadius: 3.84,
-//         elevation: 5,
-//     },
-//     calloutContainer: {
-//         padding: 10,
-//         maxWidth: 200,
-//     },
-//     calloutTitle: {
-//         fontWeight: 'bold',
-//         marginBottom: 5,
-//     },
-//     calloutAddress: {
-//         fontSize: 12,
-//     },
-//     selectedLocationContainer: {
-//         position: 'absolute',
-//         bottom: 20,
-//         left: 10,
-//         right: 10,
-//         backgroundColor: 'white',
-//         padding: 10,
-//         borderRadius: 8,
-//         shadowColor: '#000',
-//         shadowOffset: { width: 0, height: 2 },
-//         shadowOpacity: 0.25,
-//         shadowRadius: 3.84,
-//         elevation: 5,
-//     },
-//     selectedLocationText: {
-//         textAlign: 'center',
-//     },
-// });
+    return (
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={visible}
+            onRequestClose={handleClose}
+        >
+            <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                    <ThemedText style={styles.modalTitle}>Select Location</ThemedText>
 
-// export default ExperienceMapView;
+                    {/* <View style={styles.searchContainer}>
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search for a location"
+                            value={searchQuery}
+                            onChangeText={(text) => {
+                                setSearchQuery(text);
+                                if (text.length > 2) { // Only search when text is at least 3 characters
+                                    handleSearch();
+                                } else {
+                                    setSuggestions([]);
+                                }
+                            }}
+                            onSubmitEditing={handleSearch}
+                        />
+                        <TouchableOpacity
+                            style={styles.searchButton}
+                            onPress={handleSearch}
+                            disabled={isSearching || searchQuery.length < 3}
+                        >
+                            {isSearching ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <ThemedText style={styles.buttonText}>Search</ThemedText>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {suggestions.length > 0 && (
+                        <View style={styles.suggestionsContainer}>
+                            <FlatList
+                                data={suggestions}
+                                renderItem={renderSuggestionItem}
+                                keyExtractor={(item, index) => index.toString()}
+                                showsVerticalScrollIndicator={false}
+                                style={styles.suggestionsList}
+                            />
+                        </View>
+                    )}
+
+                    {selectedLocation && (
+                        <View style={styles.selectedLocationContainer}>
+                            <ThemedText style={styles.selectedLocationText}>
+                                Selected Location:
+                            </ThemedText>
+                            <ThemedText style={styles.selectedLocationName}>
+                                {selectedLocation.name}
+                            </ThemedText>
+                            <ThemedText style={styles.selectedLocationAddress}>
+                                {selectedLocation.address}
+                            </ThemedText>
+                        </View>
+                    )} */}
+
+                    <GooglePlacesAutocomplete
+                        placeholder='Search'
+                        predefinedPlaces={[]}
+                        // textInputProps={{}}
+                        // minLength={2}
+                        // styles={{}}
+                        // keyboardShouldPersistTaps='handled'
+                        onPress={(data, details = null) => {
+                            // 'details' is provided when fetchDetails = true
+                            console.log(data, details);
+                        }}
+                        query={{
+                            key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+                            language: 'en',
+                        }}
+                    />
+
+                    <View style={styles.buttonContainer}>
+                        <TouchableOpacity
+                            style={[styles.button, styles.cancelButton]}
+                            onPress={handleClose}
+                        >
+                            <ThemedText>Cancel</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.button, styles.confirmButton]}
+                            onPress={handleConfirmLocation}
+                            disabled={!selectedLocation}
+                        >
+                            <ThemedText style={styles.confirmButtonText}>
+                                Confirm Location
+                            </ThemedText>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
+const styles = StyleSheet.create({
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    },
+    modalContent: {
+        width: '90%',
+        maxHeight: '80%',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 12,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 10,
+    },
+    searchInput: {
+        flex: 1,
+        height: 40,
+        backgroundColor: 'white',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: '#ddd',
+    },
+    searchButton: {
+        backgroundColor: '#0a7ea4',
+        padding: 10,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        minWidth: 80,
+    },
+    buttonText: {
+        color: 'white',
+    },
+    suggestionsContainer: {
+        maxHeight: 200,
+        backgroundColor: 'white',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        marginBottom: 10,
+    },
+    suggestionsList: {
+        flex: 1,
+    },
+    suggestionItem: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    suggestionName: {
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    suggestionAddress: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 2,
+    },
+    selectedLocationContainer: {
+        backgroundColor: 'white',
+        padding: 15,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        marginBottom: 16,
+    },
+    selectedLocationText: {
+        fontWeight: 'bold',
+        fontSize: 16,
+        marginBottom: 5,
+    },
+    selectedLocationName: {
+        fontSize: 16,
+        marginBottom: 3,
+    },
+    selectedLocationAddress: {
+        color: '#666',
+        marginBottom: 5,
+        fontSize: 14,
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10,
+    },
+    button: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    cancelButton: {
+        backgroundColor: 'rgba(0,0,0,0.1)',
+    },
+    confirmButton: {
+        backgroundColor: '#0a7ea4',
+    },
+    confirmButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
+});

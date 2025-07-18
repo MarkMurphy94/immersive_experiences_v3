@@ -1,11 +1,11 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { FIREBASE_AUTH } from '@/FirebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { FIREBASE_AUTH } from '../../FirebaseConfig';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');

@@ -183,7 +183,7 @@ export function EncounterModal({ visible, onClose, onSave, onDelete, availableCh
                             />
                         </View>
 
-                        {selectedType !== "message" && (
+                        {!["message", "surprise_encounter"].includes(selectedType) && ( // surprise encounter will use real-time player location
                             <View style={styles.inputContainer}>
                                 <ThemedText>Location</ThemedText>
                                 <TouchableOpacity

@@ -119,28 +119,34 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <ThemedText>Summary</ThemedText>
+                        {selectedType !== "message" ? (
+                            <ThemedText>Summary</ThemedText>
+                        ) : (
+                            <ThemedText>Message to Player</ThemedText>
+                        )}
                         <TextInput
                             style={[styles.input, styles.textArea]}
                             value={summary}
                             onChangeText={setSummary}
-                            placeholder="Enter encounter summary"
+                            placeholder="Start typing"
                             multiline
                             numberOfLines={4}
                         />
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <ThemedText>Location</ThemedText>
-                        <TouchableOpacity
-                            style={styles.locationButton}
-                            onPress={openLocationModal}
-                        >
-                            <ThemedText>
-                                {location ? 'Change Location' : 'Set Location'}
-                            </ThemedText>
-                        </TouchableOpacity>
-                    </View>
+                    {selectedType !== "message" && (
+                        <View style={styles.inputContainer}>
+                            <ThemedText>Location</ThemedText>
+                            <TouchableOpacity
+                                style={styles.locationButton}
+                                onPress={openLocationModal}
+                            >
+                                <ThemedText>
+                                    {location ? 'Change Location' : 'Set Location'}
+                                </ThemedText>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     {location && (
                         <View style={styles.selectedLocation}>
@@ -171,8 +177,8 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
                         onLocationSelect={handleLocationSelect}
                     />
                 </ThemedView>
-            </View>
-        </Modal>
+            </View >
+        </Modal >
     );
 }
 

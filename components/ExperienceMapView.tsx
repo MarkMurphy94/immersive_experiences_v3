@@ -1,14 +1,25 @@
 import { ThemedText } from '@/components/ThemedText';
-import React, { useState } from 'react';
-import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import GooglePlacesSDK from 'react-native-google-places-sdk';
 
+const GOOGLE_PLACES_API_KEY: string = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "-------------";
+
+type PlacePrediction = {
+    description: string;
+    placeID: string;
+    primaryText: string;
+    secondaryText: string;
+    types: string[];
+    distanceMeters: number;
+}
 
 type Location = {
     latitude: number;
     longitude: number;
     name: string;
     address: string;
+    placeId?: string;
 };
 
 type Props = {
@@ -19,15 +30,74 @@ type Props = {
 
 export default function ExperienceMapView({ visible, onClose, onLocationSelect }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
+    const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
     const [suggestions, setSuggestions] = useState<Location[]>([]);
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
     const [isSearching, setIsSearching] = useState(false);
+
+    // Initialize Google Places SDK
+    useEffect(() => {
+        const initializePlaces = async () => {
+            try {
+                await GooglePlacesSDK.initialize(GOOGLE_PLACES_API_KEY);
+            } catch (error) {
+                console.error("Failed to initialize Google Places SDK:", error);
+            }
+        };
+
+        initializePlaces();
+
+        return () => {
+            // Clean up if needed
+        };
+    }, []);
 
     // Handle location selection
     const handleLocationSelect = (location: Location) => {
         setSelectedLocation(location);
         setSuggestions([]);
+        setPredictions([]);
         setSearchQuery(location.name);
+    };
+
+    // Handle selection of place prediction
+    const handlePredictionSelect = async (prediction: PlacePrediction) => {
+        setIsSearching(true);
+        try {
+            // Get place details from the placeID
+            // Since fetchPlaceDetails isn't available, we'll use what we have from the prediction
+            // and create a location object
+            const location: Location = {
+                // Default to 0,0 coordinates since we don't have them from the prediction
+                // In a real app, you might want to do a separate API call to get coordinates
+                latitude: 0,
+                longitude: 0,
+                name: prediction.primaryText || prediction.description.split(',')[0],
+                address: prediction.description,
+                placeId: prediction.placeID
+            };
+
+            // You can use the Google Geocoding API to get the coordinates if needed
+            try {
+                const response = await fetch(
+                    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(prediction.description)}&key=${GOOGLE_PLACES_API_KEY}`
+                );
+                const data = await response.json();
+
+                if (data.results && data.results.length > 0) {
+                    location.latitude = data.results[0].geometry.location.lat;
+                    location.longitude = data.results[0].geometry.location.lng;
+                }
+            } catch (geoError) {
+                console.error("Error fetching coordinates:", geoError);
+            }
+
+            handleLocationSelect(location);
+        } catch (error) {
+            console.error("Error handling place prediction:", error);
+        } finally {
+            setIsSearching(false);
+        }
     };
 
     // Handle confirmation and close modal
@@ -42,44 +112,49 @@ export default function ExperienceMapView({ visible, onClose, onLocationSelect }
     const handleClose = () => {
         setSearchQuery('');
         setSuggestions([]);
+        setPredictions([]);
         setSelectedLocation(null);
         onClose();
     };
 
-    // Search for locations based on query
+    // Search for locations based on query using Google Places SDK
     const handleSearch = async () => {
-        if (!searchQuery.trim()) return;
+        if (!searchQuery.trim() || searchQuery.length < 3) return;
 
         setIsSearching(true);
         try {
-            const response = await fetch(
-                `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}`
+            // Use fetchPredictions to get place predictions
+            const placePredictions = await GooglePlacesSDK.fetchPredictions(
+                searchQuery,
+                {
+                    countries: ["us"],  // Limit to US for now, can be expanded or made configurable
+                }
             );
-            const data = await response.json();
-            console.log("Geocode API response:", data);
+            console.log("Place Predictions:", placePredictions);
+            setPredictions(placePredictions);
 
-            if (data.results && data.results.length > 0) {
-                // Map API results to Location objects
-                const locationSuggestions = data.results.map((place: any) => ({
-                    latitude: place.geometry.location.lat,
-                    longitude: place.geometry.location.lng,
-                    name: place.formatted_address.split(',')[0],
-                    address: place.formatted_address
-                }));
-
-                setSuggestions(locationSuggestions);
-            } else {
-                setSuggestions([]);
-            }
-        } catch (error) {
-            console.error("Error searching location:", error);
+            // Clear any existing suggestions
             setSuggestions([]);
+        } catch (error) {
+            console.error("Error searching locations:", error);
+            setPredictions([]);
         } finally {
             setIsSearching(false);
         }
     };
 
-    // Render a suggestion item
+    // Render a prediction item
+    const renderPredictionItem = ({ item }: { item: PlacePrediction }) => (
+        <TouchableOpacity
+            style={styles.suggestionItem}
+            onPress={() => handlePredictionSelect(item)}
+        >
+            <ThemedText style={styles.suggestionName}>{item.primaryText}</ThemedText>
+            <ThemedText style={styles.suggestionAddress}>{item.secondaryText}</ThemedText>
+        </TouchableOpacity>
+    );
+
+    // Render a suggestion item (legacy, can be used for custom suggestions)
     const renderSuggestionItem = ({ item }: { item: Location }) => (
         <TouchableOpacity
             style={styles.suggestionItem}
@@ -101,7 +176,7 @@ export default function ExperienceMapView({ visible, onClose, onLocationSelect }
                 <View style={styles.modalContent}>
                     <ThemedText style={styles.modalTitle}>Select Location</ThemedText>
 
-                    {/* <View style={styles.searchContainer}>
+                    <View style={styles.searchContainer}>
                         <TextInput
                             style={styles.searchInput}
                             placeholder="Search for a location"
@@ -111,6 +186,7 @@ export default function ExperienceMapView({ visible, onClose, onLocationSelect }
                                 if (text.length > 2) { // Only search when text is at least 3 characters
                                     handleSearch();
                                 } else {
+                                    setPredictions([]);
                                     setSuggestions([]);
                                 }
                             }}
@@ -129,7 +205,19 @@ export default function ExperienceMapView({ visible, onClose, onLocationSelect }
                         </TouchableOpacity>
                     </View>
 
-                    {suggestions.length > 0 && (
+                    {predictions.length > 0 && (
+                        <View style={styles.suggestionsContainer}>
+                            <FlatList
+                                data={predictions}
+                                renderItem={renderPredictionItem}
+                                keyExtractor={(item) => item.placeID}
+                                showsVerticalScrollIndicator={false}
+                                style={styles.suggestionsList}
+                            />
+                        </View>
+                    )}
+
+                    {suggestions.length > 0 && predictions.length === 0 && (
                         <View style={styles.suggestionsContainer}>
                             <FlatList
                                 data={suggestions}
@@ -153,24 +241,7 @@ export default function ExperienceMapView({ visible, onClose, onLocationSelect }
                                 {selectedLocation.address}
                             </ThemedText>
                         </View>
-                    )} */}
-
-                    <GooglePlacesAutocomplete
-                        placeholder='Search'
-                        predefinedPlaces={[]}
-                        // textInputProps={{}}
-                        // minLength={2}
-                        // styles={{}}
-                        // keyboardShouldPersistTaps='handled'
-                        onPress={(data, details = null) => {
-                            // 'details' is provided when fetchDetails = true
-                            console.log(data, details);
-                        }}
-                        query={{
-                            key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
-                            language: 'en',
-                        }}
-                    />
+                    )}
 
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity
@@ -249,7 +320,7 @@ const styles = StyleSheet.create({
         color: 'white',
     },
     suggestionsContainer: {
-        maxHeight: 200,
+        height: 200,
         backgroundColor: 'white',
         borderRadius: 8,
         borderWidth: 1,

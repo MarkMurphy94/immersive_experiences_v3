@@ -1,8 +1,9 @@
+import { Character, CharacterSelector } from '@/components/CharacterSelector';
 import ExperienceMapView from '@/components/ExperienceMapView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import React, { useState } from 'react';
-import { Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Location = {
     latitude: number;
@@ -29,36 +30,69 @@ type Encounter = {
     name: string;
     summary: string;
     // messageToPlayer: string | null;
-    location: Location | null;
+    location: Location | string | null;
     type: string;
+    characters: Character[];
 };
 
 type Props = {
     visible: boolean;
     onClose: () => void;
     onSave: (encounter: Encounter) => void;
+    onDelete?: (encounterId: string) => void;
+    availableCharacters?: Character[];
+    encounter?: Encounter | null;
+    isEditMode?: boolean;
 };
 
-export function EncounterModal({ visible, onClose, onSave }: Props) {
+export function EncounterModal({ visible, onClose, onSave, onDelete, availableCharacters = [], encounter = null, isEditMode = false }: Props) {
     const [name, setName] = useState('');
     const [summary, setSummary] = useState('');
     const [location, setLocation] = useState<Location | null>(null);
     const [selectedType, setSelectedType] = useState<string>('message');
     const [locationModalVisible, setLocationModalVisible] = useState(false);
+    const [selectedCharacters, setSelectedCharacters] = useState<Character[]>([]);
+
+    // Update form when encounter prop changes or modal becomes visible
+    useEffect(() => {
+        if (visible && encounter) {
+            setName(encounter.name);
+            setSummary(encounter.summary);
+            setLocation(typeof encounter.location === 'string'
+                ? { name: encounter.location, address: encounter.location, latitude: 0, longitude: 0 }
+                : encounter.location);
+            setSelectedType(encounter.type);
+            setSelectedCharacters(encounter.characters || []);
+        } else if (visible && !isEditMode) {
+            // Clear form when opening in create mode
+            setName('');
+            setSummary('');
+            setLocation(null);
+            setSelectedType('message');
+            setSelectedCharacters([]);
+        }
+    }, [visible, encounter, isEditMode]);
 
     const handleSave = () => {
-        const encounter: Encounter = {
-            id: Date.now().toString(),
+        const updatedEncounter: Encounter = {
+            id: encounter ? encounter.id : Date.now().toString(),
             name,
             summary,
             location,
             type: selectedType,
+            characters: selectedCharacters
         };
-        onSave(encounter);
-        setName('');
-        setSummary('');
-        setLocation(null);
-        setSelectedType('message');
+        onSave(updatedEncounter);
+
+        // Only reset form if not in edit mode
+        if (!isEditMode) {
+            setName('');
+            setSummary('');
+            setLocation(null);
+            setSelectedType('message');
+            setSelectedCharacters([]);
+        }
+
         onClose();
     };
 
@@ -74,108 +108,152 @@ export function EncounterModal({ visible, onClose, onSave }: Props) {
         setLocationModalVisible(false);
     };
 
+    const handleClose = () => {
+        // Only reset form if not in edit mode
+        if (!isEditMode) {
+            setName('');
+            setSummary('');
+            setLocation(null);
+            setSelectedType('message');
+            setSelectedCharacters([]);
+        }
+        onClose();
+    };
+
     return (
         <Modal
             animationType="slide"
             transparent={true}
             visible={visible}
-            onRequestClose={onClose}
+            onRequestClose={handleClose}
         >
             <View style={styles.centeredView}>
                 <ThemedView style={styles.modalView}>
-                    <ThemedText type="subtitle">Create Encounter</ThemedText>
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <ThemedText type="subtitle">
+                            {isEditMode ? 'Edit Encounter' : 'Create Encounter'}
+                        </ThemedText>
 
-                    <View style={styles.inputContainer}>
-                        <ThemedText>Encounter Name</ThemedText>
-                        <TextInput
-                            style={styles.input}
-                            value={name}
-                            onChangeText={setName}
-                            placeholder="Enter encounter name"
-                        />
-                    </View>
+                        <View style={styles.inputContainer}>
+                            <ThemedText>Encounter Name</ThemedText>
+                            <TextInput
+                                style={styles.input}
+                                value={name}
+                                onChangeText={setName}
+                                placeholder="Enter encounter name"
+                            />
+                        </View>
 
-                    <View style={styles.inputContainer}>
-                        <ThemedText>Encounter Type</ThemedText>
-                        <View style={styles.typeContainer}>
-                            {encounterTypes.map((type) => (
+                        <View style={styles.inputContainer}>
+                            <ThemedText>Encounter Type</ThemedText>
+                            <View style={styles.typeContainer}>
+                                {encounterTypes.map((type) => (
+                                    <TouchableOpacity
+                                        key={type.id}
+                                        style={[
+                                            styles.typeOption,
+                                            selectedType === type.value && styles.typeOptionSelected
+                                        ]}
+                                        onPress={() => setSelectedType(type.value)}
+                                    >
+                                        <ThemedText style={[
+                                            styles.typeText,
+                                            selectedType === type.value && styles.typeTextSelected
+                                        ]}>
+                                            {type.label}
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            {selectedType !== "message" ? (
+                                <ThemedText>Summary</ThemedText>
+                            ) : (
+                                <ThemedText>Message to Player</ThemedText>
+                            )}
+                            <TextInput
+                                style={[styles.input, styles.textArea]}
+                                value={summary}
+                                onChangeText={setSummary}
+                                placeholder="Start typing"
+                                multiline
+                                numberOfLines={4}
+                            />
+                        </View>
+
+                        {selectedType !== "message" && (
+                            <View style={styles.inputContainer}>
+                                <ThemedText>Location</ThemedText>
                                 <TouchableOpacity
-                                    key={type.id}
-                                    style={[
-                                        styles.typeOption,
-                                        selectedType === type.value && styles.typeOptionSelected
-                                    ]}
-                                    onPress={() => setSelectedType(type.value)}
+                                    style={styles.locationButton}
+                                    onPress={openLocationModal}
                                 >
-                                    <ThemedText style={[
-                                        styles.typeText,
-                                        selectedType === type.value && styles.typeTextSelected
-                                    ]}>
-                                        {type.label}
+                                    <ThemedText>
+                                        {location ? 'Change Location' : 'Set Location'}
                                     </ThemedText>
                                 </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    <View style={styles.inputContainer}>
-                        {selectedType !== "message" ? (
-                            <ThemedText>Summary</ThemedText>
-                        ) : (
-                            <ThemedText>Message to Player</ThemedText>
+                            </View>
                         )}
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
-                            value={summary}
-                            onChangeText={setSummary}
-                            placeholder="Start typing"
-                            multiline
-                            numberOfLines={4}
-                        />
-                    </View>
 
-                    {selectedType !== "message" && (
+                        {location && (
+                            <View style={styles.selectedLocation}>
+                                <ThemedText>Selected Location: {location.name}</ThemedText>
+                                <ThemedText style={styles.locationAddress}>{location.address}</ThemedText>
+                            </View>
+                        )}
+
                         <View style={styles.inputContainer}>
-                            <ThemedText>Location</ThemedText>
+                            <CharacterSelector
+                                characters={availableCharacters}
+                                selectedCharacters={selectedCharacters}
+                                selectionMode={true}
+                                onSelectCharacter={(character) => {
+                                    setSelectedCharacters([...selectedCharacters, character]);
+                                }}
+                                onUnselectCharacter={(character) => {
+                                    setSelectedCharacters(selectedCharacters.filter(c => c.id !== character.id));
+                                }}
+                            />
+                        </View>
+
+                        <View style={styles.buttonContainer}>
+                            {isEditMode && onDelete && (
+                                <TouchableOpacity
+                                    style={[styles.button, styles.deleteButton]}
+                                    onPress={() => {
+                                        if (encounter) {
+                                            onDelete(encounter.id);
+                                        }
+                                    }}
+                                >
+                                    <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
+                                </TouchableOpacity>
+                            )}
                             <TouchableOpacity
-                                style={styles.locationButton}
-                                onPress={openLocationModal}
+                                style={[styles.button, styles.cancelButton]}
+                                onPress={handleClose}
                             >
-                                <ThemedText>
-                                    {location ? 'Change Location' : 'Set Location'}
+                                <ThemedText>Cancel</ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.button, styles.saveButton]}
+                                onPress={handleSave}
+                                disabled={!name.trim() || !summary.trim()}
+                            >
+                                <ThemedText style={styles.saveButtonText}>
+                                    {isEditMode ? 'Update' : 'Save'}
                                 </ThemedText>
                             </TouchableOpacity>
                         </View>
-                    )}
 
-                    {location && (
-                        <View style={styles.selectedLocation}>
-                            <ThemedText>Selected Location: {location.name}</ThemedText>
-                            <ThemedText style={styles.locationAddress}>{location.address}</ThemedText>
-                        </View>
-                    )}
-
-                    <View style={styles.buttonContainer}>
-                        <TouchableOpacity
-                            style={[styles.button, styles.cancelButton]}
-                            onPress={onClose}
-                        >
-                            <ThemedText>Cancel</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.button, styles.saveButton]}
-                            onPress={handleSave}
-                            disabled={!name.trim() || !summary.trim()}
-                        >
-                            <ThemedText style={styles.saveButtonText}>Save</ThemedText>
-                        </TouchableOpacity>
-                    </View>
-
-                    <ExperienceMapView
-                        visible={locationModalVisible}
-                        onClose={closeLocationModal}
-                        onLocationSelect={handleLocationSelect}
-                    />
+                        <ExperienceMapView
+                            visible={locationModalVisible}
+                            onClose={closeLocationModal}
+                            onLocationSelect={handleLocationSelect}
+                        />
+                    </ScrollView>
                 </ThemedView>
             </View >
         </Modal >
@@ -280,6 +358,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#0a7ea4',
     },
     saveButtonText: {
+        color: '#fff',
+    },
+    deleteButton: {
+        backgroundColor: '#e74c3c',
+    },
+    deleteButtonText: {
         color: '#fff',
     },
 });

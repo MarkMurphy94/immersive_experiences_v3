@@ -1,4 +1,4 @@
-import { CharacterModal } from '@/components/CharacterModal';
+import { CharacterSelector } from '@/components/CharacterSelector';
 import { EncounterModal } from '@/components/EncounterModal';
 import { HorizontalList } from '@/components/HorizontalList';
 import { ThemedText } from '@/components/ThemedText';
@@ -9,12 +9,20 @@ import { collection, doc, setDoc } from "firebase/firestore";
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
+type Location = {
+    latitude: number;
+    longitude: number;
+    name: string;
+    address: string;
+};
+
 type Encounter = {
     id: string;
     name: string;
     summary: string;
-    location: string | null;
-    // TODO: encounter type
+    location: Location | string | null;
+    type: string;
+    characters: Character[];
 };
 
 type Character = {
@@ -34,7 +42,6 @@ type Experience = {
     encounters: Encounter[];
 };
 
-// TODO: Add location picker for encounters - BLOCKED
 // TODO: Add character picker for encounters
 // TODO: characters/encounters in lists should be editable
 
@@ -44,8 +51,15 @@ export default function CreateExperienceScreen() {
     const [longDescription, setLongDescription] = useState('');
     const [encounters, setEncounters] = useState<Encounter[]>([]);
     const [characters, setCharacters] = useState<Character[]>([]);
-    const [showCharacterModal, setShowCharacterModal] = useState(false);
     const [showEncounterModal, setShowEncounterModal] = useState(false);
+    const [editingEncounter, setEditingEncounter] = useState<Encounter | null>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
+
+    const handleEditEncounter = (encounter: Encounter) => {
+        setEditingEncounter(encounter);
+        setIsEditMode(true);
+        setShowEncounterModal(true);
+    };
 
     const saveExperienceToFirebase = async () => {
         try {
@@ -145,27 +159,50 @@ export default function CreateExperienceScreen() {
                 </View>
 
                 <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <ThemedText type="subtitle">Characters</ThemedText>
-                        <TouchableOpacity
-                            onPress={() => setShowCharacterModal(true)}
-                            style={styles.addButton}
-                        >
-                            <ThemedText style={styles.addButtonText}>+ Add Character</ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <HorizontalList>
-                            {characters.map((character) => (
-                                <ThemedView key={character.id} style={styles.card}>
-                                    <ThemedText style={styles.cardTitle}>{character.name}</ThemedText>
-                                    <ThemedText style={styles.cardDescription}>
-                                        {character.description}
-                                    </ThemedText>
-                                </ThemedView>
-                            ))}
-                        </HorizontalList>
-                    </ScrollView>
+                    <CharacterSelector
+                        characters={characters}
+                        selectedCharacters={[]}
+                        onAddCharacter={(character) => {
+                            setCharacters([...characters, character]);
+                        }}
+                        onEditCharacter={(updatedCharacter) => {
+                            setCharacters(characters.map(c =>
+                                c.id === updatedCharacter.id ? updatedCharacter : c
+                            ));
+                        }}
+                        onDeleteCharacter={(characterId) => {
+                            // Check if the character is used in any encounters
+                            const isUsed = encounters.some(encounter =>
+                                encounter.characters.some(c => c.id === characterId)
+                            );
+
+                            if (isUsed) {
+                                Alert.alert(
+                                    "Cannot Delete Character",
+                                    "This character is used in one or more encounters. Please remove the character from all encounters first."
+                                );
+                                return;
+                            }
+
+                            Alert.alert(
+                                "Delete Character",
+                                "Are you sure you want to delete this character?",
+                                [
+                                    {
+                                        text: "Cancel",
+                                        style: "cancel"
+                                    },
+                                    {
+                                        text: "Delete",
+                                        onPress: () => {
+                                            setCharacters(characters.filter(c => c.id !== characterId));
+                                        },
+                                        style: "destructive"
+                                    }
+                                ]
+                            );
+                        }}
+                    />
                 </View>
 
                 <View style={styles.section}>
@@ -181,17 +218,32 @@ export default function CreateExperienceScreen() {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <HorizontalList>
                             {encounters.map((encounter) => (
-                                <ThemedView key={encounter.id} style={styles.card}>
-                                    <ThemedText style={styles.cardTitle}>{encounter.name}</ThemedText>
-                                    <ThemedText style={styles.cardDescription}>
-                                        {encounter.summary}
-                                    </ThemedText>
-                                    {encounter.location && (
-                                        <ThemedText style={styles.cardLocation}>
-                                            📍 {encounter.location}
+                                <TouchableOpacity
+                                    key={encounter.id}
+                                    onPress={() => {
+                                        setEditingEncounter(encounter);
+                                        setIsEditMode(true);
+                                        setShowEncounterModal(true);
+                                    }}
+                                >
+                                    <ThemedView style={styles.card}>
+                                        <ThemedText style={styles.cardTitle}>{encounter.name}</ThemedText>
+                                        <ThemedText style={styles.cardDescription}>
+                                            {encounter.summary}
                                         </ThemedText>
-                                    )}
-                                </ThemedView>
+                                        {encounter.location && (
+                                            <ThemedText style={styles.cardLocation}>
+                                                📍 {typeof encounter.location === 'string' ? encounter.location : encounter.location.name}
+                                            </ThemedText>
+                                        )}
+                                        {encounter.characters && encounter.characters.length > 0 && (
+                                            <ThemedText style={styles.cardCharacters}>
+                                                👤 {encounter.characters.length} Character{encounter.characters.length !== 1 ? 's' : ''}
+                                            </ThemedText>
+                                        )}
+                                        <ThemedText style={styles.editHint}>Tap to Edit</ThemedText>
+                                    </ThemedView>
+                                </TouchableOpacity>
                             ))}
                         </HorizontalList>
                     </ScrollView>
@@ -204,27 +256,65 @@ export default function CreateExperienceScreen() {
                 </View>
             </ThemedView>
 
-            <CharacterModal
-                visible={showCharacterModal}
-                onClose={() => setShowCharacterModal(false)}
-                onSave={(character) => {
-                    setCharacters([...characters, character]);
-                }}
-            />
-
             <EncounterModal
                 visible={showEncounterModal}
-                onClose={() => setShowEncounterModal(false)}
+                onClose={() => {
+                    setShowEncounterModal(false);
+                    setEditingEncounter(null);
+                    setIsEditMode(false);
+                }}
+                availableCharacters={characters}
+                encounter={editingEncounter}
+                isEditMode={isEditMode}
                 onSave={(encounter) => {
-                    setEncounters([
-                        ...encounters,
-                        {
-                            ...encounter,
-                            location: typeof encounter.location === 'string' || encounter.location === null
-                                ? encounter.location
-                                : (encounter.location?.name ?? ''),
-                        },
-                    ]);
+                    if (isEditMode) {
+                        // Update existing encounter
+                        setEncounters(encounters.map(enc =>
+                            enc.id === encounter.id ? {
+                                ...encounter,
+                                location: typeof encounter.location === 'string' || encounter.location === null
+                                    ? encounter.location
+                                    : (encounter.location?.name ?? ''),
+                                characters: encounter.characters || []
+                            } : enc
+                        ));
+                    } else {
+                        // Add new encounter
+                        setEncounters([
+                            ...encounters,
+                            {
+                                ...encounter,
+                                location: typeof encounter.location === 'string' || encounter.location === null
+                                    ? encounter.location
+                                    : (encounter.location?.name ?? ''),
+                                characters: encounter.characters || []
+                            },
+                        ]);
+                    }
+                    setEditingEncounter(null);
+                    setIsEditMode(false);
+                }}
+                onDelete={(encounterId) => {
+                    Alert.alert(
+                        "Delete Encounter",
+                        "Are you sure you want to delete this encounter?",
+                        [
+                            {
+                                text: "Cancel",
+                                style: "cancel"
+                            },
+                            {
+                                text: "Delete",
+                                onPress: () => {
+                                    setEncounters(encounters.filter(enc => enc.id !== encounterId));
+                                    setShowEncounterModal(false);
+                                    setEditingEncounter(null);
+                                    setIsEditMode(false);
+                                },
+                                style: "destructive"
+                            }
+                        ]
+                    );
                 }}
             />
         </ScrollView>
@@ -307,5 +397,16 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 8,
         color: '#0a7ea4',
+    },
+    cardCharacters: {
+        fontSize: 14,
+        marginTop: 8,
+        color: '#0a7ea4',
+    },
+    editHint: {
+        fontSize: 12,
+        marginTop: 8,
+        color: '#888',
+        fontStyle: 'italic',
     },
 });

@@ -72,7 +72,7 @@ export default function ProfileScreen() {
                 <View style={styles.section}>
                     <ThemedText type="subtitle">Experience History</ThemedText>
                     {user.experiences.map((experience) => (
-                        <ThemedView key={experience.id} style={styles.experienceCard}>
+                        <ThemedView key={experience.id} style={styles.ExperiencePreviewCard}>
                             <ThemedText type="defaultSemiBold">{experience.title}</ThemedText>
                             <View style={styles.experienceMeta}>
                                 <ThemedText style={styles.roleTag}>{experience.role}</ThemedText>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
         opacity: 0.7,
         fontSize: 12,
     },
-    experienceCard: {
+    ExperiencePreviewCard: {
         padding: 16,
         borderRadius: 8,
         backgroundColor: 'rgba(0,0,0,0.05)',

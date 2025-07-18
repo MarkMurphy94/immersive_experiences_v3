@@ -1,4 +1,4 @@
-import { ExperienceCard } from '@/components/ExperienceCard';
+import { ExperiencePreviewCard } from '@/components/ExperiencePreviewCard';
 import { HorizontalList } from '@/components/HorizontalList';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -68,7 +68,7 @@ export default function HomeScreen() {
             <ActivityIndicator size="large" color="#0a7ea4" />
           ) : (
             experiences.map((experience) => (
-              <ExperienceCard
+              <ExperiencePreviewCard
                 key={experience.id}
                 id={experience.id}
                 title={experience.title}
@@ -85,7 +85,7 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <ThemedText type="subtitle">Nearby Experiences</ThemedText>
         <HorizontalList>
-          <ExperienceCard
+          <ExperiencePreviewCard
             title="Art Gallery Mystery"
             description="Solve the case of the missing masterpiece"
             estimatedDuration="1.5 hours"
@@ -98,7 +98,7 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <ThemedText type="subtitle">Starting Soon</ThemedText>
         <HorizontalList>
-          <ExperienceCard
+          <ExperiencePreviewCard
             title="Ghost Tour"
             description="Experience the paranormal history of downtown"
             estimatedDuration="2 hours"
@@ -111,14 +111,14 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <ThemedText type="subtitle">Join Ongoing Experiences</ThemedText>
         <HorizontalList>
-          <ExperienceCard
+          <ExperiencePreviewCard
             title="City-wide Scavenger Hunt"
             description="Join teams competing in this exciting urban adventure"
             estimatedDuration="4 hours remaining"
             distance="Various locations"
             status="In progress - can join"
           />
-          <ExperienceCard
+          <ExperiencePreviewCard
             title="Cops 'n Robbers"
             description="Be a cop or be a robber"
             estimatedDuration="4 hours remaining"

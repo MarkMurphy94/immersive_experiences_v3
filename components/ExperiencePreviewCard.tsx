@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
-type ExperienceCardProps = {
+type ExperiencePreviewCardProps = {
     id: string;
     title: string;
     description: string;
@@ -12,7 +12,7 @@ type ExperienceCardProps = {
     status: string;
 };
 
-export function ExperienceCard({ id, title, description, estimatedDuration, distance, status }: ExperienceCardProps) {
+export function ExperiencePreviewCard({ id, title, description, estimatedDuration, distance, status }: ExperiencePreviewCardProps) {
     return (
         <Pressable
             style={styles.container}

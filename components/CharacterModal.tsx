@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Character = {
@@ -13,21 +13,42 @@ type Props = {
     visible: boolean;
     onClose: () => void;
     onSave: (character: Character) => void;
+    onDelete?: (characterId: string) => void;
+    character?: Character | null; // Pass existing character for editing
+    isEditMode?: boolean;
 };
 
-export function CharacterModal({ visible, onClose, onSave }: Props) {
+export function CharacterModal({ visible, onClose, onSave, onDelete, character = null, isEditMode = false }: Props) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
 
+    // Update form when character prop changes or modal becomes visible
+    useEffect(() => {
+        if (visible && character) {
+            setName(character.name);
+            setDescription(character.description);
+        } else if (visible && !isEditMode) {
+            // Clear form when opening in create mode
+            setName('');
+            setDescription('');
+        }
+    }, [visible, character, isEditMode]);
+
     const handleSave = () => {
-        const character: Character = {
-            id: Date.now().toString(),
+        const updatedCharacter: Character = {
+            id: character ? character.id : Date.now().toString(),
             name,
             description,
         };
-        onSave(character);
-        setName('');
-        setDescription('');
+        onSave(updatedCharacter);
+    };
+
+    const handleClose = () => {
+        // Clear form when closing if not in edit mode
+        if (!isEditMode) {
+            setName('');
+            setDescription('');
+        }
         onClose();
     };
 
@@ -36,11 +57,13 @@ export function CharacterModal({ visible, onClose, onSave }: Props) {
             animationType="slide"
             transparent={true}
             visible={visible}
-            onRequestClose={onClose}
+            onRequestClose={handleClose}
         >
             <View style={styles.centeredView}>
                 <ThemedView style={styles.modalView}>
-                    <ThemedText type="subtitle">Create Character</ThemedText>
+                    <ThemedText type="subtitle">
+                        {isEditMode ? 'Edit Character' : 'Create Character'}
+                    </ThemedText>
 
                     <View style={styles.inputContainer}>
                         <ThemedText>Character Name</ThemedText>
@@ -65,17 +88,32 @@ export function CharacterModal({ visible, onClose, onSave }: Props) {
                     </View>
 
                     <View style={styles.buttonContainer}>
+                        {isEditMode && onDelete && (
+                            <TouchableOpacity
+                                style={[styles.button, styles.deleteButton]}
+                                onPress={() => {
+                                    if (character) {
+                                        onDelete(character.id);
+                                    }
+                                }}
+                            >
+                                <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                             style={[styles.button, styles.cancelButton]}
-                            onPress={onClose}
+                            onPress={handleClose}
                         >
                             <ThemedText>Cancel</ThemedText>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.button, styles.saveButton]}
                             onPress={handleSave}
+                            disabled={!name.trim() || !description.trim()}
                         >
-                            <ThemedText style={styles.saveButtonText}>Save</ThemedText>
+                            <ThemedText style={styles.saveButtonText}>
+                                {isEditMode ? 'Update' : 'Save'}
+                            </ThemedText>
                         </TouchableOpacity>
                     </View>
                 </ThemedView>
@@ -129,6 +167,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#0a7ea4',
     },
     saveButtonText: {
+        color: '#fff',
+    },
+    deleteButton: {
+        backgroundColor: '#e74c3c',
+    },
+    deleteButtonText: {
         color: '#fff',
     },
 });

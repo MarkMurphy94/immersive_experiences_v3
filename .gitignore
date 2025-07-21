@@ -34,6 +34,8 @@ yarn-error.*
 .env*.local
 keys.tsx
 .env
+app.config.js
+android\app\src\main\AndroidManifest.xml
 
 # firebase
 FirebaseConfig.ts

@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 
-// TODO: all types to common declaration file
+// TODO: all types to common file
 type ScheduledExperience = {
     experienceId: string;
     title: string;
@@ -16,6 +16,12 @@ type ScheduledExperience = {
     playerUser: string;
     status: string;
     isActive: boolean;
+    // characters: Character[]; TODO
+    // encounters: Encounter[];
+    shortDescription?: string;
+    longDescription?: string;
+    createdBy?: string;
+    characters?: Character[];
 };
 
 type Encounter = {
@@ -29,6 +35,8 @@ type Character = {
     id: string;
     name: string;
     description: string;
+    hostUserId: string; // user that will play this character
+    // waitlistUsers: string[]; later...
 };
 
 type ExperienceDisplayData = {
@@ -38,11 +46,17 @@ type ExperienceDisplayData = {
     longDescription: string;
     createdBy: string;
     characters: Character[];
-    encounters: Encounter[];
+    // Fields specific to scheduled experiences
+    startDateTime?: Date;
+    playerUser?: string;
+    status?: string;
+    isActive?: boolean;
+    experienceId?: string; // Reference to the original experience if this is a scheduled instance
+    isScheduled?: boolean; // Flag to indicate if this is a scheduled experience
 };
 
 export default function ExperienceDetailsScreen() {
-    const { id } = useLocalSearchParams();
+    const { id, source } = useLocalSearchParams();
     const [experience, setExperience] = useState<ExperienceDisplayData | null>(null);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -53,11 +67,69 @@ export default function ExperienceDetailsScreen() {
     useEffect(() => {
         async function fetchExperience() {
             try {
-                const experienceRef = doc(FIRESTORE, 'ImmersiveExperiences', id as string);
+                // Determine collection based on source param (default to ImmersiveExperiences)
+                const isScheduled = source === 'calendar';
+                const collection = isScheduled ? 'ExperienceCalendar' : 'ImmersiveExperiences';
+
+                // Fetch the requested experience
+                const experienceRef = doc(FIRESTORE, collection, id as string);
                 const experienceSnap = await getDoc(experienceRef);
 
                 if (experienceSnap.exists()) {
-                    setExperience({ id: experienceSnap.id, ...experienceSnap.data() } as ExperienceDisplayData);
+                    const data = experienceSnap.data();
+
+                    if (isScheduled && data.experienceId) {
+                        // For scheduled experiences, fetch the original experience details
+                        const originalRef = doc(FIRESTORE, 'ImmersiveExperiences', data.experienceId);
+                        const originalSnap = await getDoc(originalRef);
+
+                        if (originalSnap.exists()) {
+                            const originalData = originalSnap.data();
+
+                            // Combine data from both documents
+                            setExperience({
+                                id: experienceSnap.id,
+                                title: data.title || originalData.title,
+                                shortDescription: originalData.shortDescription || '',
+                                longDescription: originalData.longDescription || '',
+                                createdBy: originalData.createdBy || '',
+                                characters: originalData.characters || [],
+                                // Scheduled-specific fields
+                                startDateTime: data.startDateTime,
+                                playerUser: data.playerUser,
+                                status: data.status,
+                                isActive: data.isActive,
+                                experienceId: data.experienceId,
+                                isScheduled: true
+                            } as ExperienceDisplayData);
+                        } else {
+                            // Original experience not found, use just the scheduled data
+                            setExperience({
+                                id: experienceSnap.id,
+                                title: data.title,
+                                shortDescription: data.shortDescription || 'No description available',
+                                longDescription: data.longDescription || 'No details available',
+                                createdBy: data.createdBy || '',
+                                characters: data.characters || [],
+                                // Scheduled-specific fields
+                                startDateTime: data.startDateTime,
+                                playerUser: data.playerUser,
+                                status: data.status,
+                                isActive: data.isActive,
+                                experienceId: data.experienceId,
+                                isScheduled: true
+                            } as ExperienceDisplayData);
+                        }
+                    } else {
+                        // Regular experience, just use the data as is
+                        setExperience({
+                            id: experienceSnap.id,
+                            ...data,
+                            isScheduled: false
+                        } as ExperienceDisplayData);
+                    }
+                } else {
+                    console.error('Experience not found');
                 }
             } catch (error) {
                 console.error('Error fetching experience:', error);
@@ -67,7 +139,7 @@ export default function ExperienceDetailsScreen() {
         }
 
         fetchExperience();
-    }, [id]);
+    }, [id, source]);
 
     const scheduleExperience = () => {
         setShowModal(true);
@@ -139,6 +211,20 @@ export default function ExperienceDetailsScreen() {
                 <ThemedView style={styles.header}>
                     <ThemedText type="title">{experience.title}</ThemedText>
                     <ThemedText style={styles.description}>{experience.shortDescription}</ThemedText>
+
+                    {experience.isScheduled && experience.startDateTime && (
+                        <View style={styles.metaInfo}>
+                            <ThemedText style={styles.scheduledBadge}>Scheduled</ThemedText>
+                            <ThemedText style={styles.date}>
+                                {new Date(experience.startDateTime).toLocaleString()}
+                            </ThemedText>
+                            {experience.status && (
+                                <ThemedText style={styles.status}>
+                                    Status: {experience.status}
+                                </ThemedText>
+                            )}
+                        </View>
+                    )}
                 </ThemedView>
 
                 <ThemedView style={styles.content}>
@@ -148,16 +234,37 @@ export default function ExperienceDetailsScreen() {
 
                     <View style={styles.section}>
                         <ThemedText type="subtitle">Characters</ThemedText>
-                        {experience.characters.map((character) => (
-                            <View key={character.id} style={styles.characterCard}>
-                                <ThemedText type="defaultSemiBold">{character.name}</ThemedText>
-                                <ThemedText>{character.description}</ThemedText>
-                            </View>
-                        ))}
+                        {experience.characters && experience.characters.length > 0 ? (
+                            experience.characters.map((character) => (
+                                <View key={character.id} style={styles.characterCard}>
+                                    <ThemedText type="defaultSemiBold">{character.name}</ThemedText>
+                                    <ThemedText>{character.description}</ThemedText>
+                                </View>
+                            ))
+                        ) : (
+                            <ThemedText>No characters available for this experience.</ThemedText>
+                        )}
                     </View>
-                    <TouchableOpacity style={styles.button} onPress={scheduleExperience}>
-                        <ThemedText style={styles.buttonText}>Schedule this Experience</ThemedText>
-                    </TouchableOpacity>
+
+                    {/* Only show Schedule button for regular experiences */}
+                    {!experience.isScheduled && (
+                        <TouchableOpacity style={styles.button} onPress={scheduleExperience}>
+                            <ThemedText style={styles.buttonText}>Schedule this Experience</ThemedText>
+                        </TouchableOpacity>
+                    )}
+                    {/* Show Join button for scheduled experiences */}
+                    {experience.isScheduled && (
+                        <TouchableOpacity
+                            style={styles.button}
+                            onPress={() => {
+                                // TODO: Implement join functionality
+                                Alert.alert('Join Experience', 'This feature will be implemented soon!');
+                            }}
+                        >
+                            <ThemedText style={styles.buttonText}>Join this Experience</ThemedText>
+                        </TouchableOpacity>
+                    )}
+
                     <Modal
                         animationType="slide"
                         transparent={true}
@@ -273,9 +380,23 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
+        marginTop: 12,
     },
     date: {
         opacity: 0.7,
+    },
+    status: {
+        color: '#0a7ea4',
+        fontWeight: '600',
+    },
+    scheduledBadge: {
+        backgroundColor: '#0a7ea4',
+        color: 'white',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        fontSize: 12,
+        overflow: 'hidden',
     },
     section: {
         marginTop: 24,

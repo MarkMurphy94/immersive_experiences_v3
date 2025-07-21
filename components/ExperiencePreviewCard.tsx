@@ -10,13 +10,23 @@ type ExperiencePreviewCardProps = {
     estimatedDuration: string;
     distance: string;
     status: string;
+    source?: string; // Optional source parameter to indicate where the experience is from
 };
 
-export function ExperiencePreviewCard({ id, title, description, estimatedDuration, distance, status }: ExperiencePreviewCardProps) {
+export function ExperiencePreviewCard({ id, title, description, estimatedDuration, distance, status, source }: ExperiencePreviewCardProps) {
     return (
         <Pressable
             style={styles.container}
-            onPress={() => router.push(`/experience/${id}`)}
+            onPress={() => {
+                if (source) {
+                    router.push({
+                        pathname: "/experience/[id]",
+                        params: { id, source }
+                    });
+                } else {
+                    router.push(`/experience/${id}`);
+                }
+            }}
         >
             <ThemedView style={styles.card}>
                 <View style={styles.content}>

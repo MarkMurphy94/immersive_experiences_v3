@@ -16,7 +16,6 @@ type ScheduledExperience = {
     playerUser: string;
     status: string;
     isActive: boolean;
-    // characters: Character[]; TODO
     // encounters: Encounter[];
     shortDescription?: string;
     longDescription?: string;
@@ -35,7 +34,7 @@ type Character = {
     id: string;
     name: string;
     description: string;
-    hostUserId: string; // user that will play this character
+    hostUserId?: string; // user that will play this character
     // waitlistUsers: string[]; later...
 };
 
@@ -63,6 +62,9 @@ export default function ExperienceDetailsScreen() {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
+    const [showJoinModal, setShowJoinModal] = useState(false);
+    const [availableCharacters, setAvailableCharacters] = useState<Character[]>([]);
+    const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
 
     useEffect(() => {
         async function fetchExperience() {
@@ -87,13 +89,15 @@ export default function ExperienceDetailsScreen() {
                             const originalData = originalSnap.data();
 
                             // Combine data from both documents
+                            const combinedCharacters = originalData.characters || [];
+                            setAvailableCharacters(combinedCharacters);
                             setExperience({
                                 id: experienceSnap.id,
                                 title: data.title || originalData.title,
                                 shortDescription: originalData.shortDescription || '',
                                 longDescription: originalData.longDescription || '',
                                 createdBy: originalData.createdBy || '',
-                                characters: originalData.characters || [],
+                                characters: combinedCharacters,
                                 // Scheduled-specific fields
                                 startDateTime: data.startDateTime,
                                 playerUser: data.playerUser,
@@ -104,13 +108,15 @@ export default function ExperienceDetailsScreen() {
                             } as ExperienceDisplayData);
                         } else {
                             // Original experience not found, use just the scheduled data
+                            const fallbackCharacters = data.characters || [];
+                            setAvailableCharacters(fallbackCharacters);
                             setExperience({
                                 id: experienceSnap.id,
                                 title: data.title,
                                 shortDescription: data.shortDescription || 'No description available',
                                 longDescription: data.longDescription || 'No details available',
                                 createdBy: data.createdBy || '',
-                                characters: data.characters || [],
+                                characters: fallbackCharacters,
                                 // Scheduled-specific fields
                                 startDateTime: data.startDateTime,
                                 playerUser: data.playerUser,
@@ -122,6 +128,7 @@ export default function ExperienceDetailsScreen() {
                         }
                     } else {
                         // Regular experience, just use the data as is
+                        setAvailableCharacters(data.characters || []);
                         setExperience({
                             id: experienceSnap.id,
                             ...data,
@@ -156,6 +163,7 @@ export default function ExperienceDetailsScreen() {
                 experienceId: experience.id,
                 title: experience.title,
                 playerUser: currentUser.uid,
+                characters: experience.characters || [],
                 startDateTime: selectedDate,
                 status: 'scheduled',
                 isActive: false
@@ -189,6 +197,118 @@ export default function ExperienceDetailsScreen() {
         }
     };
 
+    const handleJoinExperience = async () => {
+        try {
+            if (!experience || !selectedCharacter) {
+                Alert.alert('Error', 'Please select a character to join the experience.');
+                return;
+            }
+
+            const currentUser = FIREBASE_AUTH.currentUser;
+            if (!currentUser) {
+                Alert.alert('Error', 'You need to be logged in to join an experience.');
+                return;
+            }
+
+            // Get the current experience data from Firestore
+            const experienceRef = doc(FIRESTORE, 'ExperienceCalendar', id as string);
+            const experienceSnap = await getDoc(experienceRef);
+
+            if (!experienceSnap.exists()) {
+                Alert.alert('Error', 'Experience not found.');
+                return;
+            }
+
+            const experienceData = experienceSnap.data();
+            const updatedCharacters = [...(experienceData.characters || [])];
+
+            // Find the selected character and update its hostUserId
+            const characterIndex = updatedCharacters.findIndex(c => c.id === selectedCharacter.id);
+            if (characterIndex !== -1) {
+                updatedCharacters[characterIndex] = {
+                    ...updatedCharacters[characterIndex],
+                    hostUserId: currentUser.uid
+                };
+
+                // Update the document in Firestore
+                const newDoc = await setDoc(experienceRef, {
+                    ...experienceData,
+                    characters: updatedCharacters
+                });
+
+                // Update local state
+                setExperience({
+                    ...experience,
+                    characters: updatedCharacters
+                });
+
+                setShowJoinModal(false);
+                Alert.alert('Success', `You've joined as ${selectedCharacter.name}!`);
+            } else {
+                Alert.alert('Error', 'Character not found in the experience.');
+            }
+        } catch (error) {
+            console.error('Error joining experience:', error);
+            Alert.alert('Error', 'Failed to join the experience. Please try again.');
+        }
+    };
+
+    const handleCancelExperience = async () => {
+        try {
+            if (!experience) return;
+
+            const currentUser = FIREBASE_AUTH.currentUser;
+            if (!currentUser) {
+                Alert.alert('Error', 'You need to be logged in to cancel an experience.');
+                return;
+            }
+
+            // Only the user who scheduled the experience can cancel it
+            if (experience.playerUser !== currentUser.uid) {
+                Alert.alert('Permission Denied', 'Only the person who scheduled this experience can cancel it.');
+                return;
+            }
+
+            // Confirm before cancelling
+            Alert.alert(
+                'Cancel Experience',
+                'Are you sure you want to cancel this scheduled experience? This action cannot be undone.',
+                [
+                    {
+                        text: 'No',
+                        style: 'cancel',
+                    },
+                    {
+                        text: 'Yes, Cancel',
+                        style: 'destructive',
+                        onPress: async () => {
+                            const experienceRef = doc(FIRESTORE, 'ExperienceCalendar', id as string);
+
+                            // Update status to cancelled instead of deleting the document
+                            await setDoc(experienceRef, {
+                                ...experience,
+                                status: 'cancelled',
+                                isActive: false
+                            });
+
+                            // Update local state
+                            setExperience({
+                                ...experience,
+                                status: 'cancelled',
+                                isActive: false
+                            });
+
+                            Alert.alert('Success', 'The experience has been cancelled.');
+                        }
+                    }
+                ]
+            );
+        } catch (error) {
+            console.error('Error cancelling experience:', error);
+            Alert.alert('Error', 'Failed to cancel the experience. Please try again.');
+        }
+    };
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -219,10 +339,21 @@ export default function ExperienceDetailsScreen() {
                                 {new Date(experience.startDateTime).toLocaleString()}
                             </ThemedText>
                             {experience.status && (
-                                <ThemedText style={styles.status}>
+                                <ThemedText style={[
+                                    styles.status,
+                                    experience.status === 'cancelled' && styles.cancelledStatus
+                                ]}>
                                     Status: {experience.status}
                                 </ThemedText>
                             )}
+                        </View>
+                    )}
+
+                    {experience.isScheduled && experience.status === 'cancelled' && (
+                        <View style={styles.cancelledBanner}>
+                            <ThemedText style={styles.cancelledBannerText}>
+                                This experience has been cancelled
+                            </ThemedText>
                         </View>
                     )}
                 </ThemedView>
@@ -239,6 +370,13 @@ export default function ExperienceDetailsScreen() {
                                 <View key={character.id} style={styles.characterCard}>
                                     <ThemedText type="defaultSemiBold">{character.name}</ThemedText>
                                     <ThemedText>{character.description}</ThemedText>
+                                    {experience.isScheduled && character.hostUserId && (
+                                        <ThemedText style={styles.statusText}>
+                                            {character.hostUserId === FIREBASE_AUTH.currentUser?.uid
+                                                ? 'You are playing this character'
+                                                : 'Character already claimed'}
+                                        </ThemedText>
+                                    )}
                                 </View>
                             ))
                         ) : (
@@ -254,15 +392,31 @@ export default function ExperienceDetailsScreen() {
                     )}
                     {/* Show Join button for scheduled experiences */}
                     {experience.isScheduled && (
-                        <TouchableOpacity
-                            style={styles.button}
-                            onPress={() => {
-                                // TODO: Implement join functionality
-                                Alert.alert('Join Experience', 'This feature will be implemented soon!');
-                            }}
-                        >
-                            <ThemedText style={styles.buttonText}>Join this Experience</ThemedText>
-                        </TouchableOpacity>
+                        <View style={styles.buttonContainer}>
+                            {/* Only show Join button if the experience is not cancelled */}
+                            {experience.status !== 'cancelled' && (
+                                <TouchableOpacity
+                                    style={styles.button}
+                                    onPress={() => {
+                                        setAvailableCharacters(experience.characters || []);
+                                        setSelectedCharacter(null);
+                                        setShowJoinModal(true);
+                                    }}
+                                >
+                                    <ThemedText style={styles.buttonText}>Join this Experience</ThemedText>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Only show Cancel button if the current user is the one who scheduled it and it's not already cancelled */}
+                            {experience.playerUser === FIREBASE_AUTH.currentUser?.uid && experience.status !== 'cancelled' && (
+                                <TouchableOpacity
+                                    style={[styles.button, styles.cancelExperienceButton]}
+                                    onPress={handleCancelExperience}
+                                >
+                                    <ThemedText style={styles.buttonText}>Cancel this Experience</ThemedText>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     )}
 
                     <Modal
@@ -331,6 +485,81 @@ export default function ExperienceDetailsScreen() {
                         </View>
                     </Modal>
 
+                    {/* Join Experience Modal */}
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={showJoinModal}
+                        onRequestClose={() => setShowJoinModal(false)}
+                    >
+                        <View style={styles.modalContainer}>
+                            <ThemedView style={styles.modalContent}>
+                                <ThemedText type="subtitle">Select a Character</ThemedText>
+                                <ThemedText style={styles.modalDescription}>
+                                    Select a character to play in this experience:
+                                </ThemedText>
+
+                                <ScrollView style={styles.characterList}>
+                                    {availableCharacters.length > 0 ? (
+                                        availableCharacters.map((character) => (
+                                            <TouchableOpacity
+                                                key={character.id}
+                                                style={[
+                                                    styles.characterOption,
+                                                    selectedCharacter?.id === character.id && styles.selectedCharacter,
+                                                    character.hostUserId && character.hostUserId !== FIREBASE_AUTH.currentUser?.uid && styles.disabledCharacter
+                                                ]}
+                                                onPress={() => {
+                                                    // Only allow selection if character has no host or is hosted by current user
+                                                    if (!character.hostUserId || character.hostUserId === FIREBASE_AUTH.currentUser?.uid) {
+                                                        setSelectedCharacter(character);
+                                                    } else {
+                                                        Alert.alert('Character Unavailable', 'This character has already been claimed by another player.');
+                                                    }
+                                                }}
+                                                disabled={Boolean(character.hostUserId && character.hostUserId !== FIREBASE_AUTH.currentUser?.uid)}
+                                            >
+                                                <View style={styles.characterOptionContent}>
+                                                    <ThemedText type="defaultSemiBold">{character.name}</ThemedText>
+                                                    <ThemedText style={styles.characterDescription}>{character.description}</ThemedText>
+
+                                                    {character.hostUserId && (
+                                                        <View style={styles.characterStatus}>
+                                                            <ThemedText style={styles.statusText}>
+                                                                {character.hostUserId === FIREBASE_AUTH.currentUser?.uid
+                                                                    ? '(Your character)'
+                                                                    : '(Already claimed)'}
+                                                            </ThemedText>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))
+                                    ) : (
+                                        <ThemedText>No characters available for this experience.</ThemedText>
+                                    )}
+                                </ScrollView>
+
+                                <View style={styles.modalButtons}>
+                                    <TouchableOpacity
+                                        style={[styles.button, styles.cancelButton]}
+                                        onPress={() => setShowJoinModal(false)}
+                                    >
+                                        <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.button, styles.confirmButton, !selectedCharacter && styles.disabledButton]}
+                                        onPress={handleJoinExperience}
+                                        disabled={!selectedCharacter}
+                                    >
+                                        <ThemedText style={styles.buttonText}>Join</ThemedText>
+                                    </TouchableOpacity>
+                                </View>
+                            </ThemedView>
+                        </View>
+                    </Modal>
+
                     {/* <View style={styles.section}>
                     <ThemedText type="subtitle">Encounters</ThemedText>
                     {experience.encounters.map((encounter) => (
@@ -388,6 +617,9 @@ const styles = StyleSheet.create({
     status: {
         color: '#0a7ea4',
         fontWeight: '600',
+    },
+    cancelledStatus: {
+        color: '#d9534f',
     },
     scheduledBadge: {
         backgroundColor: '#0a7ea4',
@@ -464,5 +696,63 @@ const styles = StyleSheet.create({
     },
     confirmButton: {
         backgroundColor: '#0a7ea4',
+    },
+    // Character selection modal styles
+    modalDescription: {
+        marginBottom: 12,
+        opacity: 0.7,
+    },
+    characterList: {
+        maxHeight: 300,
+    },
+    characterOption: {
+        padding: 16,
+        borderRadius: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        marginBottom: 8,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    selectedCharacter: {
+        borderColor: '#0a7ea4',
+    },
+    disabledCharacter: {
+        opacity: 0.5,
+    },
+    characterOptionContent: {
+        gap: 4,
+    },
+    characterDescription: {
+        fontSize: 14,
+        opacity: 0.7,
+    },
+    characterStatus: {
+        marginTop: 4,
+    },
+    statusText: {
+        fontSize: 12,
+        fontStyle: 'italic',
+        color: '#0a7ea4',
+    },
+    disabledButton: {
+        opacity: 0.5,
+    },
+    buttonContainer: {
+        gap: 12,
+    },
+    cancelExperienceButton: {
+        backgroundColor: '#d9534f',
+    },
+    cancelledBanner: {
+        marginTop: 12,
+        padding: 8,
+        backgroundColor: 'rgba(217, 83, 79, 0.2)',
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: '#d9534f',
+    },
+    cancelledBannerText: {
+        color: '#d9534f',
+        fontWeight: '600',
     },
 });

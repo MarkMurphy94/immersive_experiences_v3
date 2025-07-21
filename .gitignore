@@ -37,6 +37,7 @@ keys.tsx
 
 # firebase
 FirebaseConfig.ts
+FirebaseConfig.js
 
 # typescript
 *.tsbuildinfo

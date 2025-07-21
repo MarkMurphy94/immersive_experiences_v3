@@ -9,6 +9,8 @@ import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, TouchableOpaci
 
 
 // TODO: all types to common file
+// TODO: Eventually separate scheduling user from player user
+
 type ScheduledExperience = {
     experienceId: string;
     title: string;
@@ -264,6 +266,7 @@ export default function ExperienceDetailsScreen() {
             }
 
             // Only the user who scheduled the experience can cancel it
+            // TODO: button should only display to scheduling user
             if (experience.playerUser !== currentUser.uid) {
                 Alert.alert('Permission Denied', 'Only the person who scheduled this experience can cancel it.');
                 return;

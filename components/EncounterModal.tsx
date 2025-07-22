@@ -29,7 +29,7 @@ type Encounter = {
     id: string;
     name: string;
     summary: string;
-    // messageToPlayer: string | null;
+    hostInstruction?: string;
     location: Location | string | null;
     type: string;
     characters: Character[];
@@ -48,6 +48,7 @@ type Props = {
 export function EncounterModal({ visible, onClose, onSave, onDelete, availableCharacters = [], encounter = null, isEditMode = false }: Props) {
     const [name, setName] = useState('');
     const [summary, setSummary] = useState('');
+    const [hostInstruction, setHostInstruction] = useState('');
     const [location, setLocation] = useState<Location | null>(null);
     const [selectedType, setSelectedType] = useState<string>('message');
     const [locationModalVisible, setLocationModalVisible] = useState(false);
@@ -58,6 +59,7 @@ export function EncounterModal({ visible, onClose, onSave, onDelete, availableCh
         if (visible && encounter) {
             setName(encounter.name);
             setSummary(encounter.summary);
+            setHostInstruction(encounter.hostInstruction || '');
             setLocation(typeof encounter.location === 'string'
                 ? { name: encounter.location, address: encounter.location, latitude: 0, longitude: 0 }
                 : encounter.location);
@@ -67,6 +69,7 @@ export function EncounterModal({ visible, onClose, onSave, onDelete, availableCh
             // Clear form when opening in create mode
             setName('');
             setSummary('');
+            setHostInstruction('');
             setLocation(null);
             setSelectedType('message');
             setSelectedCharacters([]);
@@ -79,6 +82,7 @@ export function EncounterModal({ visible, onClose, onSave, onDelete, availableCh
             name,
             summary,
             location,
+            hostInstruction,
             type: selectedType,
             characters: selectedCharacters
         };
@@ -88,6 +92,7 @@ export function EncounterModal({ visible, onClose, onSave, onDelete, availableCh
         if (!isEditMode) {
             setName('');
             setSummary('');
+            setHostInstruction('');
             setLocation(null);
             setSelectedType('message');
             setSelectedCharacters([]);
@@ -182,6 +187,20 @@ export function EncounterModal({ visible, onClose, onSave, onDelete, availableCh
                                 numberOfLines={4}
                             />
                         </View>
+
+                        {selectedType !== "message" && (
+                            <View style={styles.inputContainer}>
+                                <ThemedText>Instructions for Hosts</ThemedText>
+                                <TextInput
+                                    style={[styles.input, styles.textArea]}
+                                    value={hostInstruction}
+                                    onChangeText={setHostInstruction}
+                                    placeholder="Give instructions for any characters the player will encounter"
+                                    multiline
+                                    numberOfLines={4}
+                                />
+                            </View>
+                        )}
 
                         {!["message", "surprise_encounter"].includes(selectedType) && ( // surprise encounter will use real-time player location
                             <View style={styles.inputContainer}>

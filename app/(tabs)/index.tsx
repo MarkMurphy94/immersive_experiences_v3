@@ -3,9 +3,9 @@ import { HorizontalList } from '@/components/HorizontalList';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { FIRESTORE } from '@/FirebaseConfig';
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 type Experience = {
   id: string;
@@ -21,11 +21,17 @@ export default function HomeScreen() {
   const [featuredExperiences, setFeaturedExperiences] = useState<Experience[]>([]);
   const [upcomingExperiences, setUpcomingExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchFeaturedExperiences = async () => {
     try {
       const experiencesRef = collection(FIRESTORE, 'ImmersiveExperiences');
-      const q = query(experiencesRef, limit(5)); // Limit to 5 featured experiences
+      // Query for experiences, sorted by createdAt timestamp in descending order (newest first)
+      const q = query(
+        experiencesRef,
+        orderBy('createdAt', 'desc'),
+        limit(5)
+      );
       const querySnapshot = await getDocs(q);
       const fetchedExperiences: Experience[] = [];
       querySnapshot.forEach((doc) => {
@@ -44,7 +50,10 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error fetching experiences:', error);
     } finally {
-      setLoading(false);
+      // Only set loading to false on initial load, not during refresh
+      if (!refreshing) {
+        setLoading(false);
+      }
     }
   };
 
@@ -83,7 +92,10 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error fetching upcoming experiences:', error);
     } finally {
-      setLoading(false);
+      // Only set loading to false on initial load, not during refresh
+      if (!refreshing) {
+        setLoading(false);
+      }
     }
   };
 
@@ -91,14 +103,37 @@ export default function HomeScreen() {
     // TODO: if user is part of any upcoming experiences, add "Your Upcoming Experiences" section
   }
 
+  // Function to handle refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchFeaturedExperiences(),
+      fetchUpcomingExperiences()
+    ]);
+    setRefreshing(false);
+  };
+
   useEffect(() => {
+    // Initial data loading
     fetchFeaturedExperiences();
-    // Also fetch upcoming experiences
     fetchUpcomingExperiences();
+    // We're omitting fetchFeaturedExperiences and fetchUpcomingExperiences from the dependency array
+    // because we only want to run this on component mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#0a7ea4"]} // Match your app's color theme
+          tintColor="#0a7ea4"
+        />
+      }
+    >
       <ThemedView style={styles.header}>
         <ThemedText type="title">Immersive Experiences</ThemedText>
       </ThemedView>

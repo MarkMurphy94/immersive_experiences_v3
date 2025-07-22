@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { FIREBASE_AUTH, FIRESTORE } from '@/FirebaseConfig';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, doc, getDoc, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -58,6 +58,7 @@ type ExperienceDisplayData = {
 
 export default function ExperienceDetailsScreen() {
     const { id, source } = useLocalSearchParams();
+    const router = useRouter();
     const [experience, setExperience] = useState<ExperienceDisplayData | null>(null);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -233,12 +234,10 @@ export default function ExperienceDetailsScreen() {
                 };
 
                 // Update the document in Firestore
-                const newDoc = await setDoc(experienceRef, {
+                await setDoc(experienceRef, {
                     ...experienceData,
                     characters: updatedCharacters
-                });
-
-                // Update local state
+                });                // Update local state
                 setExperience({
                     ...experience,
                     characters: updatedCharacters
@@ -409,6 +408,39 @@ export default function ExperienceDetailsScreen() {
                                     <ThemedText style={styles.buttonText}>Join this Experience</ThemedText>
                                 </TouchableOpacity>
                             )}
+
+                            {/* Show Host View button if the user has joined an experience as a character */}
+                            <TouchableOpacity
+                                style={[styles.button, styles.hostViewButton]}
+                                onPress={async () => {
+                                    try {
+                                        // Get fresh data from Firestore to ensure we have the latest host assignments
+                                        const experienceRef = doc(FIRESTORE, 'ExperienceCalendar', id as string);
+                                        const experienceSnap = await getDoc(experienceRef);
+
+                                        if (experienceSnap.exists()) {
+                                            const data = experienceSnap.data();
+                                            const characters = data.characters || [];
+
+                                            // Find the character that the current user is hosting
+                                            const userCharacter = characters.find(c => c.hostUserId === FIREBASE_AUTH.currentUser?.uid);
+
+                                            if (userCharacter) {
+                                                router.push(`/experience/${id}/host/${userCharacter.id}`);
+                                            } else {
+                                                Alert.alert('Not a Host', 'You are not currently hosting any character in this experience.');
+                                            }
+                                        } else {
+                                            Alert.alert('Error', 'Experience not found.');
+                                        }
+                                    } catch (error) {
+                                        console.error('Error checking host status:', error);
+                                        Alert.alert('Error', 'Could not verify host status. Please try again.');
+                                    }
+                                }}
+                            >
+                                <ThemedText style={styles.buttonText}>Host View</ThemedText>
+                            </TouchableOpacity>
 
                             {/* Only show Cancel button if the current user is the one who scheduled it and it's not already cancelled */}
                             {experience.playerUser === FIREBASE_AUTH.currentUser?.uid && experience.status !== 'cancelled' && (
@@ -745,6 +777,9 @@ const styles = StyleSheet.create({
     },
     cancelExperienceButton: {
         backgroundColor: '#d9534f',
+    },
+    hostViewButton: {
+        backgroundColor: '#28a745',
     },
     cancelledBanner: {
         marginTop: 12,

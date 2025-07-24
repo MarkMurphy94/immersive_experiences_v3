@@ -38,8 +38,8 @@ app.config.js
 android\app\src\main\AndroidManifest.xml
 
 # firebase
-FirebaseConfig.ts
-FirebaseConfig.js
+# FirebaseConfig.ts
+# FirebaseConfig.js
 
 # typescript
 *.tsbuildinfo

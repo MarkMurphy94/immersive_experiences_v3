@@ -30,7 +30,7 @@ export default function HomeScreen() {
       const q = query(
         experiencesRef,
         orderBy('createdAt', 'desc'),
-        limit(5)
+        limit(10)
       );
       const querySnapshot = await getDocs(q);
       const fetchedExperiences: Experience[] = [];
@@ -69,8 +69,9 @@ export default function HomeScreen() {
       const q = query(
         experiencesRef,
         where('startDateTime', '>=', today),
-        where('startDateTime', '<=', sevenDaysLater),
-        limit(5)
+        // where('startDateTime', '<=', sevenDaysLater),
+        // orderBy('startDateTime', 'asc'),
+        limit(10)
       );
 
       const querySnapshot = await getDocs(q);

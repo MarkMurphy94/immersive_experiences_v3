@@ -15,11 +15,11 @@ const getUniqueIdentifier = () => {
 
 const getAppName = () => {
     if (IS_DEV) {
-        return 'immersive_experiences_v3 (Dev)';
+        return 'immersive_experiences_v3_dev';
     }
 
     if (IS_PREVIEW) {
-        return 'immersive_experiences_v3 (Preview)';
+        return 'immersive_experiences_v3_preview';
     }
 
     return 'immersive_experiences_v3';
